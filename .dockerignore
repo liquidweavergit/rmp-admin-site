@@ -1,0 +1,11 @@
+.git
+.gitignore
+README.md
+.pytest_cache
+__pycache__
+*.pyc
+.coverage
+node_modules
+.env
+.env.*
+!.env.example
