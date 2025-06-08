@@ -1,6 +1,7 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*.pyc
 *$py.class
 
 # C extensions
@@ -192,3 +193,211 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# Node.js Dependencies and Build Output
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Node.js Runtime
+*.tgz
+*.tar.gz
+
+# Node.js Coverage
+coverage/
+*.lcov
+
+# Node.js Build Output
+dist/
+build/
+out/
+
+# Next.js Build Output
+.next/
+out/
+
+# Gatsby Build Output
+.cache/
+public/
+
+# Vue.js Build Output
+dist/
+
+# Nuxt.js Build Output
+.nuxt/
+dist/
+
+# Vuepress Build Output
+.vuepress/dist
+
+# Serverless Directories
+.serverless/
+
+# FuseBox Cache
+.fusebox/
+
+# DynamoDB Local Files
+.dynamodb/
+
+# TernJS Port File
+.tern-port
+
+# Stores VSCode Versions Used for Testing VSCode Extensions
+.vscode-test
+
+# Yarn Integrity File
+.yarn-integrity
+
+# Yarn PnP Files
+.pnp.*
+
+# ESLint Cache
+.eslintcache
+
+# Microbundle Cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL History
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn v2/v3 Files
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Docker Files and Volumes
+Dockerfile.*
+docker-compose.override.yml
+.docker/
+.dockerignore
+
+# Docker Build Context
+**/target/
+**/build/
+**/dist/
+
+# Docker Data Volumes
+volumes/
+data/
+pgdata/
+mysql-data/
+redis-data/
+
+# Docker Container Logs
+docker-logs/
+*.dockerlog
+
+# Men's Circle Platform Specific
+
+# Environment Files
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+.env.test
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+db.sqlite3
+db.sqlite3-journal
+
+# Log Files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime Data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage Directory Used by Tools like Istanbul
+coverage/
+*.lcov
+
+# Test Output
+test-results/
+junit.xml
+coverage.xml
+
+# Build Artifacts
+build/
+dist/
+out/
+target/
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Backup Files
+*.bak
+*.backup
+*.orig
+
+# Archive Files
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+
+# SSL Certificates
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# API Keys and Secrets
+secrets/
+.secrets/
+config/secrets/
+private/
+*.secret
+
+# Stripe Test Data
+stripe-test-data/
+
+# Application Specific
+uploads/
+user-uploads/
+static-uploads/
+media/
