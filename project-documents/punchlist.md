@@ -45,7 +45,7 @@
 - [x] 2.2 Create requirements.txt with core dependencies: FastAPI, SQLAlchemy, psycopg2, redis, stripe, python-jose ✅ COMPLETED (Dec 8, 2024)
 - [x] 2.3 Configure SQLAlchemy with async support for main and credentials databases ✅ COMPLETED (Dec 8, 2024)
   - **Note**: Requires `postgresql+asyncpg://` URLs in .env for async support
-- [ ] 2.4 Set up Alembic for database migrations
+- [x] 2.4 Set up Alembic for database migrations ✅ COMPLETED (Jun 8, 2025)
 - [x] 2.5 Create health check endpoint (`/health`) ✅ COMPLETED (Dec 8, 2024)
 - [x] 2.6 Add CORS middleware for frontend access ✅ COMPLETED (Dec 8, 2024)
 
