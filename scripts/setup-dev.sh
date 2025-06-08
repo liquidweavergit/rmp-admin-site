@@ -337,12 +337,12 @@ EOF
         log_substep "✓ pytest.ini already exists"
     fi
     
-    # Run initial structure tests
-    log_substep "Running project structure validation tests..."
-    if pytest tests/structure/ -v; then
-        log_substep "✓ Project structure tests passed"
+    # Basic pytest validation
+    log_substep "Validating pytest installation..."
+    if pytest --version >/dev/null 2>&1; then
+        log_substep "✓ pytest installation validated"
     else
-        log_warning "Some project structure tests failed. This is expected during initial setup."
+        log_warning "pytest validation failed"
     fi
     
     log_success "Testing environment setup complete"
@@ -400,7 +400,7 @@ print_completion_message() {
     echo -e "${BLUE}Next Steps:${NC}"
     echo -e "${CYAN}1.${NC} Activate Python environment: ${YELLOW}source venv/bin/activate${NC}"
     echo -e "${CYAN}2.${NC} Review and update .env file with your API keys"
-    echo -e "${CYAN}3.${NC} Run tests to verify setup: ${YELLOW}pytest tests/structure/ -v${NC}"
+    echo -e "${CYAN}3.${NC} Run tests to verify setup: ${YELLOW}pytest tests/ -v${NC}"
     echo -e "${CYAN}4.${NC} Start development servers:"
     echo -e "   ${YELLOW}• Backend:${NC} cd backend && uvicorn app.main:app --reload"
     echo -e "   ${YELLOW}• Frontend:${NC} cd frontend && npm run dev"
@@ -413,7 +413,7 @@ print_completion_message() {
     echo
     echo -e "${BLUE}Useful Commands:${NC}"
     echo -e "${CYAN}•${NC} Run all tests: ${YELLOW}pytest${NC}"
-    echo -e "${CYAN}•${NC} Run structure tests: ${YELLOW}pytest tests/structure/ -v${NC}"
+    echo -e "${CYAN}•${NC} Run unit tests: ${YELLOW}pytest tests/ -v${NC}"
     echo -e "${CYAN}•${NC} Format code: ${YELLOW}black backend/${NC}"
     echo
     echo -e "${GREEN}Happy coding! 🚀${NC}"
