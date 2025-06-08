@@ -408,7 +408,7 @@ jobs:
           cat deployment-report.md
 
       - name: Upload deployment report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deployment-report-${{ needs.build-images.outputs.version }}
           path: deployment-report.md
