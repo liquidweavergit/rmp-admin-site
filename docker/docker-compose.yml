@@ -1,0 +1,159 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Main Database
+  postgres-main:
+    image: postgres:15-alpine
+    container_name: mens-circle-postgres-main
+    environment:
+      POSTGRES_DB: mens_circle_main
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-development_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_main_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mens_circle_main"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - mens-circle-network
+
+  # PostgreSQL Credentials Database
+  postgres-creds:
+    image: postgres:15-alpine
+    container_name: mens-circle-postgres-creds
+    environment:
+      POSTGRES_DB: mens_circle_creds
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_CREDS_PASSWORD:-development_creds_password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_creds_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mens_circle_creds"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - mens-circle-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: mens-circle-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - mens-circle-network
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: mens-circle-backend
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-development_password}@postgres-main:5432/mens_circle_main
+      - CREDS_DATABASE_URL=postgresql://postgres:${POSTGRES_CREDS_PASSWORD:-development_creds_password}@postgres-creds:5432/mens_circle_creds
+      - REDIS_URL=redis://redis:6379
+      - ENVIRONMENT=development
+      - SECRET_KEY=${SECRET_KEY:-development_secret_key}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_logs:/app/logs
+    depends_on:
+      postgres-main:
+        condition: service_healthy
+      postgres-creds:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - mens-circle-network
+
+  # Frontend Application
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: mens-circle-frontend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_ENVIRONMENT=development
+      - REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - mens-circle-network
+
+  # Nginx Load Balancer (Production-like setup)
+  nginx:
+    image: nginx:alpine
+    container_name: mens-circle-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - mens-circle-network
+
+volumes:
+  postgres_main_data:
+    driver: local
+  postgres_creds_data:
+    driver: local
+  redis_data:
+    driver: local
+  backend_logs:
+    driver: local
+
+networks:
+  mens-circle-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

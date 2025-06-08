@@ -45,7 +45,7 @@ jobs:
           ./scripts/setup-dev.sh --validate
 
       - name: Upload structure test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: structure-test-results
@@ -152,7 +152,7 @@ jobs:
           fi
 
       - name: Upload backend test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: backend-test-results
@@ -217,7 +217,7 @@ jobs:
           fi
 
       - name: Upload frontend build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: frontend-build
