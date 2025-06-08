@@ -532,3 +532,211 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Men's Circle Management Platform** - Facilitating meaningful connections and personal growth through organized community engagement.
 
 For questions or support, please contact our team or create an issue in this repository.
+
+## Current Status
+
+✅ **Task 2.1 COMPLETED**: FastAPI application structure with Docker support
+
+- Backend API with async database support
+- Health monitoring endpoints
+- Production-ready Docker configuration
+- Comprehensive testing suite
+
+## Quick Start with Docker
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+- Git repository cloned
+
+### Running the Application
+
+1. **Start all services:**
+
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Check service status:**
+
+   ```bash
+   docker compose ps
+   ```
+
+3. **Test the API:**
+
+   ```bash
+   # Root endpoint
+   curl http://localhost:8000/
+
+   # Health check
+   curl http://localhost:8000/api/v1/health
+
+   # Readiness probe
+   curl http://localhost:8000/api/v1/health/ready
+
+   # Liveness probe
+   curl http://localhost:8000/api/v1/health/live
+   ```
+
+4. **View logs:**
+
+   ```bash
+   docker compose logs backend
+   ```
+
+5. **Stop services:**
+   ```bash
+   docker compose down
+   ```
+
+### Services
+
+- **Backend API**: http://localhost:8000
+
+  - FastAPI with async PostgreSQL support
+  - Health monitoring endpoints
+  - JWT authentication infrastructure
+  - API documentation: http://localhost:8000/docs (development only)
+
+- **PostgreSQL Main**: localhost:5432
+
+  - Main application database
+  - Database: `mens_circle_main`
+
+- **PostgreSQL Credentials**: localhost:5433
+
+  - Separate credentials database
+  - Database: `mens_circle_creds`
+
+- **Redis**: localhost:6379
+  - Cache and session storage
+
+## Development Setup
+
+### Backend Development
+
+1. **Install dependencies:**
+
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
+   ```
+
+2. **Run tests:**
+
+   ```bash
+   pytest tests/
+   ```
+
+3. **Run locally (requires databases):**
+   ```bash
+   cd backend
+   uvicorn app.main:app --reload
+   ```
+
+### Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+# Database Configuration (async URLs required)
+DATABASE_URL=postgresql+asyncpg://postgres:development_password@localhost:5432/mens_circle_main
+CREDS_DATABASE_URL=postgresql+asyncpg://postgres:development_creds_password@localhost:5433/mens_circle_creds
+REDIS_URL=redis://localhost:6379
+
+# JWT Configuration
+JWT_SECRET_KEY=your_jwt_secret_key_here
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# Stripe Configuration
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+
+# External Services (optional for development)
+SENDGRID_API_KEY=your_sendgrid_api_key
+TWILIO_ACCOUNT_SID=your_twilio_account_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_PHONE_NUMBER=your_twilio_phone_number
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+```
+
+## Architecture
+
+### Backend Structure
+
+```
+backend/
+├── app/
+│   ├── api/v1/          # API endpoints
+│   ├── core/            # Core functionality
+│   │   ├── database.py  # Database configuration
+│   │   └── security.py  # Authentication & security
+│   ├── models/          # SQLAlchemy models (future)
+│   ├── schemas/         # Pydantic schemas (future)
+│   ├── services/        # Business logic (future)
+│   ├── utils/           # Utilities (future)
+│   ├── config.py        # Configuration management
+│   └── main.py          # FastAPI application
+├── requirements.txt     # Production dependencies
+└── requirements-dev.txt # Development dependencies
+```
+
+### Key Features
+
+- **Async Database Support**: PostgreSQL with asyncpg driver
+- **Dual Database Architecture**: Separate main and credentials databases
+- **JWT Authentication**: Ready for user authentication
+- **Health Monitoring**: Kubernetes-compatible health checks
+- **Docker Ready**: Production-ready containerization
+- **Security First**: bcrypt password hashing, secure JWT tokens
+- **API Versioning**: Clean `/api/v1` structure
+- **CORS Configured**: Ready for frontend integration
+
+## Next Steps
+
+1. **Database Migrations** (Task 2.4): Set up Alembic for schema management
+2. **Frontend Setup** (Task 3.1): React TypeScript application
+3. **Authentication** (Phase 2): User registration and login
+4. **Circle Management** (Phase 3): Core business logic
+
+## Testing
+
+Run the test suite:
+
+```bash
+cd backend
+pytest tests/ -v
+```
+
+Current test coverage:
+
+- ✅ Directory structure validation
+- ✅ Configuration loading
+- ✅ Security functions
+- ✅ Application initialization
+- ✅ Import validation
+
+## Documentation
+
+- [Product Brief](project-documents/product-brief.md)
+- [Technical Specification](project-documents/tech-spec.md)
+- [Development Punchlist](project-documents/punchlist.md)
+- [Task 2.1 Implementation Details](enhancements_2.md)
+
+## Contributing
+
+1. Follow the existing code structure
+2. Write tests for new functionality
+3. Use async/await patterns for database operations
+4. Follow FastAPI best practices
+5. Update documentation as needed
+
+## License
+
+[License information to be added]

@@ -1,10 +1,8 @@
-version: "3.8"
-
 services:
   # PostgreSQL Main Database
-  postgres:
+  postgres-main:
     image: postgres:15-alpine
-    container_name: mens-circle-postgres
+    container_name: mens-circle-postgres-main
     environment:
       POSTGRES_DB: mens_circle_main
       POSTGRES_USER: postgres
@@ -12,7 +10,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_main_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d mens_circle_main"]
       interval: 30s
@@ -21,7 +20,27 @@ services:
     networks:
       - mens-circle-network
 
-  # Redis Cache and Session Storage
+  # PostgreSQL Credentials Database
+  postgres-creds:
+    image: postgres:15-alpine
+    container_name: mens-circle-postgres-creds
+    environment:
+      POSTGRES_DB: mens_circle_creds
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_CREDS_PASSWORD:-development_creds_password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_creds_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mens_circle_creds"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - mens-circle-network
+
+  # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: mens-circle-redis
@@ -37,34 +56,50 @@ services:
     networks:
       - mens-circle-network
 
-  # Backend API Service
+  # Backend API
   backend:
     build:
       context: .
-      dockerfile: docker/backend.Dockerfile
+      dockerfile: Dockerfile.backend
     container_name: mens-circle-backend
     environment:
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-development_password}@postgres:5432/mens_circle_main
+      # Fixed: Use async database URLs
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-development_password}@postgres-main:5432/mens_circle_main
+      - CREDS_DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_CREDS_PASSWORD:-development_creds_password}@postgres-creds:5432/mens_circle_creds
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-development_jwt_secret_key}
-      - SECRET_KEY=${SECRET_KEY:-development_secret_key}
       - ENVIRONMENT=development
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      # JWT Configuration
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-development_jwt_secret_key}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      # Stripe Configuration
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_placeholder}
+      - REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY:-pk_test_placeholder}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-whsec_placeholder}
+      # External Services
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      # Google OAuth
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - backend_logs:/app/logs
     depends_on:
-      postgres:
+      postgres-main:
+        condition: service_healthy
+      postgres-creds:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      # Fixed: Use new API v1 health endpoint
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -75,7 +110,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: docker/frontend.Dockerfile
+      dockerfile: Dockerfile.frontend
     container_name: mens-circle-frontend
     environment:
       - REACT_APP_API_URL=http://localhost:8000
@@ -89,21 +124,47 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     networks:
       - mens-circle-network
 
-# Persistent volumes for data storage
+  # Nginx Load Balancer (Production-like setup)
+  nginx:
+    image: nginx:alpine
+    container_name: mens-circle-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - mens-circle-network
+
 volumes:
-  postgres_data:
+  postgres_main_data:
+    driver: local
+  postgres_creds_data:
     driver: local
   redis_data:
     driver: local
+  backend_logs:
+    driver: local
 
-# Custom network for service communication
 networks:
   mens-circle-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
