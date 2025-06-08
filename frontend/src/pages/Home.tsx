@@ -31,7 +31,7 @@ const Home: React.FC = () => {
                 ✅ Backend Status: {healthData.status}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Service: {healthData.service || 'Unknown'}
+                Service: {healthData.status || 'Unknown'}
               </Typography>
             </Box>
           )}
