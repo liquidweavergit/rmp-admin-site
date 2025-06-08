@@ -4,6 +4,7 @@ module.exports = {
   setupFilesAfterEnv: ["<rootDir>/src/setupTests.ts"],
   moduleNameMapping: {
     "^@/(.*)$": "<rootDir>/src/$1",
+    "\\.(css|less|scss|sass)$": "identity-obj-proxy",
   },
   transform: {
     "^.+\\.(ts|tsx)$": "ts-jest",
@@ -20,7 +21,4 @@ module.exports = {
     "!src/main.tsx",
     "!src/vite-env.d.ts",
   ],
-  moduleNameMapping: {
-    "\\.(css|less|scss|sass)$": "identity-obj-proxy",
-  },
 };

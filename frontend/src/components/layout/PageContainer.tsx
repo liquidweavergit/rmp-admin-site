@@ -148,7 +148,7 @@ const PageContainer: React.FC<PageContainerProps> = ({
       {/* Page Content */}
       {!loading && (
         <Box
-          data-testid="page-content"
+          data-testid="page-content-wrapper"
           sx={{
             backgroundColor: theme.palette.background.paper,
             borderRadius: 1,

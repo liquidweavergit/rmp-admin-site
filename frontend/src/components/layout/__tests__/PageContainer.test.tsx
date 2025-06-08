@@ -20,6 +20,7 @@ describe("PageContainer", () => {
     expect(screen.getByTestId("page-container")).toBeInTheDocument();
     expect(screen.getByTestId("page-title")).toHaveTextContent("Test Page");
     expect(screen.getByTestId("page-content")).toBeInTheDocument();
+    expect(screen.getByTestId("page-content-wrapper")).toBeInTheDocument();
   });
 
   it("should render with optional subtitle", () => {
