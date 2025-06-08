@@ -2,7 +2,7 @@
  * Permission utility functions for role-based access control
  */
 
-import type { UserProfileResponse, RoleResponse, UserRoleResponse } from "../store";
+import type { UserProfileResponse, RoleResponse } from "../store";
 
 /**
  * Check if user has a specific permission

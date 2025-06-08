@@ -76,6 +76,22 @@ interface AuthStatus {
   user?: UserResponse;
 }
 
+// SMS Verification interfaces
+interface SendSMSVerificationRequest {
+  phone: string;
+}
+
+interface VerifySMSCodeRequest {
+  phone: string;
+  code: string;
+}
+
+interface SMSVerificationResponse {
+  success: boolean;
+  message: string;
+  phone_verified?: boolean;
+}
+
 // Define the API base query
 const baseQuery = fetchBaseQuery({
   baseUrl: process.env.REACT_APP_API_URL || "http://localhost:8000",
@@ -144,6 +160,25 @@ export const api = createApi({
     getUserProfile: builder.query<UserProfileResponse, void>({
       query: () => "/api/v1/auth/profile",
       providesTags: ["Auth"],
+    }),
+
+    // SMS verification endpoints
+    sendSMSVerification: builder.mutation<SMSVerificationResponse, SendSMSVerificationRequest>({
+      query: (smsData) => ({
+        url: "/api/v1/auth/send-sms-verification",
+        method: "POST",
+        body: smsData,
+      }),
+      invalidatesTags: ["Auth"],
+    }),
+
+    verifySMSCode: builder.mutation<SMSVerificationResponse, VerifySMSCodeRequest>({
+      query: (verificationData) => ({
+        url: "/api/v1/auth/verify-sms-code",
+        method: "POST",
+        body: verificationData,
+      }),
+      invalidatesTags: ["Auth"],
     }),
   }),
 });
@@ -246,6 +281,8 @@ export const {
   useGetCurrentUserQuery,
   useGetAuthStatusQuery,
   useGetUserProfileQuery,
+  useSendSMSVerificationMutation,
+  useVerifySMSCodeMutation,
 } = api;
 
 // Export types for use in other modules
@@ -259,4 +296,7 @@ export type {
   UserProfileResponse,
   TokenResponse,
   AuthStatus,
+  SendSMSVerificationRequest,
+  VerifySMSCodeRequest,
+  SMSVerificationResponse,
 };

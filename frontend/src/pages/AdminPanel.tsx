@@ -10,7 +10,6 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Divider,
 } from "@mui/material";
 import {
   People as PeopleIcon,

@@ -14,9 +14,7 @@ import {
   Grid,
 } from "@mui/material";
 import { Visibility, VisibilityOff, Email, Lock, Person, Phone } from "@mui/icons-material";
-import { useDispatch } from "react-redux";
 import { useRegisterMutation } from "../../store";
-import { setCredentials } from "../../store";
 import { validateRegisterForm, RegisterFormData } from "../../utils/validation";
 
 interface RegisterFormProps {
@@ -30,7 +28,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   onSwitchToLogin,
   showTitle = true,
 }) => {
-  const dispatch = useDispatch();
   const [register, { isLoading }] = useRegisterMutation();
 
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -91,7 +88,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         ...(formData.phone?.trim() && { phone: formData.phone.trim() }),
       };
 
-      const user = await register(registerData).unwrap();
+      await register(registerData).unwrap();
 
       // For registration, we don't get tokens directly
       // User needs to verify email or we need to automatically log them in

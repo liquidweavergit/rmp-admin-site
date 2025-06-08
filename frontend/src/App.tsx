@@ -12,6 +12,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import FacilitatorPanel from "./pages/FacilitatorPanel";
+import { PhoneVerification } from "./pages/PhoneVerification";
 import "./App.css";
 
 function App() {
@@ -25,6 +26,16 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+
+              {/* Phone verification route - requires authentication but not full verification */}
+              <Route
+                path="/verify-phone"
+                element={
+                  <ProtectedRoute>
+                    <PhoneVerification />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Protected Routes */}
               <Route
