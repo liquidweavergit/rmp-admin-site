@@ -19,7 +19,9 @@ from ....schemas.auth import (
     GoogleOAuthUrlResponse,
     GoogleOAuthCallbackRequest,
     GoogleOAuthLoginRequest,
-    GoogleOAuthResponse
+    GoogleOAuthResponse,
+    PasswordResetRequest,
+    PasswordResetConfirm
 )
 from ....services.auth_service import AuthService, get_auth_service
 from ....services.google_oauth_service import GoogleOAuthService, get_google_oauth_service
@@ -385,4 +387,59 @@ async def google_oauth_login(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Google OAuth login failed"
+        )
+
+
+@router.post(
+    "/password-reset/request",
+    summary="Request password reset",
+    description="Send password reset email to user"
+)
+async def request_password_reset(
+    request: PasswordResetRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+) -> dict:
+    """
+    Request password reset
+    
+    - **email**: Email address to send reset link to
+    
+    Returns confirmation message (same message regardless of whether email exists for security)
+    """
+    try:
+        return await auth_service.request_password_reset(request)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process password reset request"
+        )
+
+
+@router.post(
+    "/password-reset/confirm",
+    summary="Confirm password reset",
+    description="Reset password using token from email"
+)
+async def confirm_password_reset(
+    request: PasswordResetConfirm,
+    auth_service: AuthService = Depends(get_auth_service)
+) -> dict:
+    """
+    Confirm password reset
+    
+    - **token**: Password reset token from email
+    - **new_password**: New password (must meet complexity requirements)
+    
+    Returns success message
+    """
+    try:
+        return await auth_service.confirm_password_reset(request)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reset password"
         ) 

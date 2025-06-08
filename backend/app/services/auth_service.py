@@ -37,10 +37,13 @@ from ..schemas.auth import (
     VerifyPhoneSMSRequest,
     SMSVerificationResponse,
     GoogleOAuthLoginRequest,
-    GoogleOAuthResponse
+    GoogleOAuthResponse,
+    PasswordResetRequest,
+    PasswordResetConfirm
 )
 from .sms_service import SMSService, get_sms_service
 from .google_oauth_service import GoogleOAuthService, get_google_oauth_service
+from .email_service import EmailService, get_email_service
 
 
 class AuthService:
@@ -50,12 +53,15 @@ class AuthService:
     LOCKOUT_DURATION_MINUTES = 30
     MAX_SMS_ATTEMPTS = 3
     SMS_EXPIRY_MINUTES = 10
+    MAX_PASSWORD_RESET_ATTEMPTS = 3
+    PASSWORD_RESET_EXPIRY_MINUTES = 60
     
-    def __init__(self, main_db: AsyncSession, credentials_db: AsyncSession, sms_service: SMSService = None, google_oauth_service: GoogleOAuthService = None):
+    def __init__(self, main_db: AsyncSession, credentials_db: AsyncSession, sms_service: SMSService = None, google_oauth_service: GoogleOAuthService = None, email_service: EmailService = None):
         self.main_db = main_db
         self.credentials_db = credentials_db
         self.sms_service = sms_service or get_sms_service()
         self.google_oauth_service = google_oauth_service or get_google_oauth_service()
+        self.email_service = email_service or get_email_service()
     
     async def register_user(self, user_data: UserCreate) -> UserResponse:
         """
@@ -512,6 +518,133 @@ class AuthService:
             is_new_user=is_new_user
         )
     
+    async def request_password_reset(self, request: PasswordResetRequest) -> dict:
+        """
+        Initiate password reset process by sending reset email
+        
+        Args:
+            request: Password reset request with email
+            
+        Returns:
+            dict: Response indicating email was sent
+            
+        Raises:
+            HTTPException: If user not found or too many attempts
+        """
+        # Find user by email
+        user = await self._get_user_by_email(request.email)
+        if not user:
+            # For security, don't reveal if email exists
+            return {
+                "message": "If the email address exists in our system, a password reset link has been sent."
+            }
+        
+        # Get credentials
+        credentials = await self._get_user_credentials(user.id)
+        if not credentials:
+            # For security, don't reveal if email exists
+            return {
+                "message": "If the email address exists in our system, a password reset link has been sent."
+            }
+        
+        # Check if too many reset attempts
+        if credentials.password_reset_attempts >= self.MAX_PASSWORD_RESET_ATTEMPTS:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many password reset attempts. Please try again later."
+            )
+        
+        # Generate reset token
+        reset_token = generate_reset_token()
+        expires_at = datetime.utcnow() + timedelta(minutes=self.PASSWORD_RESET_EXPIRY_MINUTES)
+        
+        # Store reset token
+        credentials.password_reset_token = reset_token
+        credentials.password_reset_expires_at = expires_at
+        credentials.password_reset_attempts += 1
+        await self.credentials_db.commit()
+        
+        # Send password reset email
+        try:
+            await self.email_service.send_password_reset_email(
+                to_email=user.email,
+                first_name=user.first_name,
+                reset_token=reset_token
+            )
+            
+            return {
+                "message": "If the email address exists in our system, a password reset link has been sent."
+            }
+        except HTTPException:
+            # Roll back the attempt count if email fails
+            credentials.password_reset_attempts -= 1
+            await self.credentials_db.commit()
+            raise
+    
+    async def confirm_password_reset(self, request: PasswordResetConfirm) -> dict:
+        """
+        Confirm password reset with token and set new password
+        
+        Args:
+            request: Password reset confirmation with token and new password
+            
+        Returns:
+            dict: Success message
+            
+        Raises:
+            HTTPException: If token is invalid or expired
+        """
+        # Find credentials by reset token
+        credentials = await self._get_credentials_by_reset_token(request.token)
+        if not credentials:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset token"
+            )
+        
+        # Check if token has expired
+        if (credentials.password_reset_expires_at and 
+            credentials.password_reset_expires_at < datetime.utcnow()):
+            # Clear expired token
+            await self._clear_password_reset_token(credentials)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password reset token has expired"
+            )
+        
+        # Get user
+        user = await self._get_user_by_id(credentials.user_id)
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid reset token"
+            )
+        
+        # Update password
+        salt = secrets.token_urlsafe(32)
+        password_hash = get_password_hash(request.new_password + salt)
+        
+        credentials.password_hash = password_hash
+        credentials.salt = salt
+        credentials.password_changed_at = datetime.utcnow()
+        
+        # Clear reset token and reset attempts
+        await self._clear_password_reset_token(credentials)
+        credentials.password_reset_attempts = 0
+        
+        # Clear any existing sessions (logout all devices)
+        credentials.refresh_token_hash = None
+        
+        # Reset login attempts if account was locked
+        credentials.failed_login_attempts = 0
+        credentials.locked_until = None
+        
+        await self.credentials_db.commit()
+        
+        return {
+            "message": "Password has been successfully reset. Please log in with your new password."
+        }
+    
     # Private helper methods
     
     async def _get_user_by_email(self, email: str) -> Optional[User]:
@@ -658,6 +791,19 @@ class AuthService:
         if access_token:
             credentials.google_access_token = access_token.encode('utf-8')
         
+        await self.credentials_db.commit()
+    
+    async def _get_credentials_by_reset_token(self, reset_token: str) -> Optional[UserCredentials]:
+        """Get user credentials by password reset token"""
+        result = await self.credentials_db.execute(
+            select(UserCredentials).where(UserCredentials.password_reset_token == reset_token)
+        )
+        return result.scalar_one_or_none()
+    
+    async def _clear_password_reset_token(self, credentials: UserCredentials) -> None:
+        """Clear password reset token and expiry"""
+        credentials.password_reset_token = None
+        credentials.password_reset_expires_at = None
         await self.credentials_db.commit()
 
 

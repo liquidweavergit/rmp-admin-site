@@ -38,6 +38,11 @@ class UserCredentials(CredentialsBase):
     phone_verification_expires_at = Column(DateTime(timezone=True), nullable=True)
     phone_verification_attempts = Column(Integer, default=0, nullable=False)
     
+    # Password reset
+    password_reset_token = Column(String(255), nullable=True)
+    password_reset_expires_at = Column(DateTime(timezone=True), nullable=True)
+    password_reset_attempts = Column(Integer, default=0, nullable=False)
+    
     # Security tracking
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)
