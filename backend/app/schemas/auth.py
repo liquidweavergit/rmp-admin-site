@@ -2,7 +2,7 @@
 Authentication schemas for request/response validation
 """
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
@@ -217,4 +217,57 @@ class GoogleOAuthResponse(BaseModel):
     refresh_token: str = Field(..., description="JWT refresh token")
     token_type: str = Field(default="bearer", description="Token type")
     user: UserResponse = Field(..., description="User information")
-    is_new_user: bool = Field(..., description="Whether this is a newly created user") 
+    is_new_user: bool = Field(..., description="Whether this is a newly created user")
+
+
+class PermissionResponse(BaseModel):
+    """Schema for permission data in responses"""
+    id: int = Field(..., description="Permission unique identifier")
+    name: str = Field(..., description="Permission name (e.g., 'circles:view')")
+    description: str = Field(..., description="Permission description")
+    resource: str = Field(..., description="Resource the permission applies to")
+    action: str = Field(..., description="Action the permission allows")
+    
+    class Config:
+        from_attributes = True
+
+
+class RoleResponse(BaseModel):
+    """Schema for role data in responses"""
+    id: int = Field(..., description="Role unique identifier")
+    name: str = Field(..., description="Role name")
+    description: str = Field(..., description="Role description")
+    priority: int = Field(..., description="Role priority for hierarchy")
+    permissions: List[PermissionResponse] = Field(default=[], description="Role permissions")
+    
+    class Config:
+        from_attributes = True
+
+
+class UserRoleResponse(BaseModel):
+    """Schema for user role assignment data"""
+    role: RoleResponse = Field(..., description="Role information")
+    is_primary: bool = Field(..., description="Whether this is the user's primary role")
+    assigned_at: datetime = Field(..., description="When the role was assigned")
+    
+    class Config:
+        from_attributes = True
+
+
+class UserProfileResponse(BaseModel):
+    """Extended user response with role information"""
+    id: int = Field(..., description="User's unique identifier")
+    email: str = Field(..., description="User's email address")
+    first_name: str = Field(..., description="User's first name")
+    last_name: str = Field(..., description="User's last name")
+    phone: Optional[str] = Field(None, description="User's phone number")
+    is_active: bool = Field(..., description="Whether the user account is active")
+    is_verified: bool = Field(..., description="Whether the user is verified")
+    email_verified: bool = Field(..., description="Whether the email is verified")
+    phone_verified: bool = Field(..., description="Whether the phone is verified")
+    created_at: datetime = Field(..., description="When the user account was created")
+    roles: List[UserRoleResponse] = Field(default=[], description="User's assigned roles")
+    permissions: List[str] = Field(default=[], description="All user permissions (aggregated from roles)")
+    
+    class Config:
+        from_attributes = True 

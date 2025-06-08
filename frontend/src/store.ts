@@ -28,6 +28,43 @@ interface UserResponse {
   created_at: string;
 }
 
+interface PermissionResponse {
+  id: number;
+  name: string;
+  description: string;
+  resource: string;
+  action: string;
+}
+
+interface RoleResponse {
+  id: number;
+  name: string;
+  description: string;
+  priority: number;
+  permissions: PermissionResponse[];
+}
+
+interface UserRoleResponse {
+  role: RoleResponse;
+  is_primary: boolean;
+  assigned_at: string;
+}
+
+interface UserProfileResponse {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  is_active: boolean;
+  is_verified: boolean;
+  email_verified: boolean;
+  phone_verified: boolean;
+  created_at: string;
+  roles: UserRoleResponse[];
+  permissions: string[];
+}
+
 interface TokenResponse {
   access_token: string;
   refresh_token: string;
@@ -103,6 +140,11 @@ export const api = createApi({
       query: () => "/api/v1/auth/status",
       providesTags: ["Auth"],
     }),
+
+    getUserProfile: builder.query<UserProfileResponse, void>({
+      query: () => "/api/v1/auth/profile",
+      providesTags: ["Auth"],
+    }),
   }),
 });
 
@@ -113,6 +155,7 @@ interface AuthState {
   token: string | null;
   refreshToken: string | null;
   user: UserResponse | null;
+  userProfile: UserProfileResponse | null;
   isAuthenticated: boolean;
 }
 
@@ -120,6 +163,7 @@ const initialState: AuthState = {
   token: localStorage.getItem("access_token"),
   refreshToken: localStorage.getItem("refresh_token"),
   user: null,
+  userProfile: null,
   isAuthenticated: false,
 };
 
@@ -148,6 +192,7 @@ const authSlice = createSlice({
       state.token = null;
       state.refreshToken = null;
       state.user = null;
+      state.userProfile = null;
       state.isAuthenticated = false;
 
       // Clear localStorage
@@ -159,10 +204,27 @@ const authSlice = createSlice({
       state.user = action.payload;
       state.isAuthenticated = true;
     },
+
+    setUserProfile: (state, action: PayloadAction<UserProfileResponse>) => {
+      state.userProfile = action.payload;
+      state.user = {
+        id: action.payload.id,
+        email: action.payload.email,
+        first_name: action.payload.first_name,
+        last_name: action.payload.last_name,
+        phone: action.payload.phone,
+        is_active: action.payload.is_active,
+        is_verified: action.payload.is_verified,
+        email_verified: action.payload.email_verified,
+        phone_verified: action.payload.phone_verified,
+        created_at: action.payload.created_at,
+      };
+      state.isAuthenticated = true;
+    },
   },
 });
 
-export const { setCredentials, clearCredentials, setUser } = authSlice.actions;
+export const { setCredentials, clearCredentials, setUser, setUserProfile } = authSlice.actions;
 
 // Configure the store
 export const store = configureStore({
@@ -183,4 +245,18 @@ export const {
   useLogoutMutation,
   useGetCurrentUserQuery,
   useGetAuthStatusQuery,
+  useGetUserProfileQuery,
 } = api;
+
+// Export types for use in other modules
+export type {
+  UserCreate,
+  UserLogin,
+  UserResponse,
+  PermissionResponse,
+  RoleResponse,
+  UserRoleResponse,
+  UserProfileResponse,
+  TokenResponse,
+  AuthStatus,
+};

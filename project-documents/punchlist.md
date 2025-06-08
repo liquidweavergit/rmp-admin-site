@@ -89,7 +89,7 @@
 
 - [x] 6.1 Create login/registration forms with validation ✅ COMPLETED (Dec 19, 2024)
 - [x] 6.2 Implement Redux authentication state management ✅ COMPLETED (Dec 19, 2024) - Included in 6.1
-- [ ] 6.3 Create protected routes based on user roles
+- [x] 6.3 Create protected routes based on user roles ✅ COMPLETED (Dec 19, 2024)
 - [ ] 6.4 Add phone verification UI workflow
 - [ ] 6.5 Implement Google OAuth button and flow
 

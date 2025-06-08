@@ -21,7 +21,10 @@ from ....schemas.auth import (
     GoogleOAuthLoginRequest,
     GoogleOAuthResponse,
     PasswordResetRequest,
-    PasswordResetConfirm
+    PasswordResetConfirm,
+    UserProfileResponse,
+    RoleResponse,
+    PermissionResponse
 )
 from ....services.auth_service import AuthService, get_auth_service
 from ....services.google_oauth_service import GoogleOAuthService, get_google_oauth_service
@@ -217,6 +220,77 @@ async def auth_status(
         )
     else:
         return AuthStatus(authenticated=False, user=None)
+
+
+@router.get(
+    "/profile",
+    response_model=UserProfileResponse,
+    summary="Get current user profile with roles",
+    description="Get detailed user profile including roles and permissions"
+)
+async def get_user_profile(
+    current_user: User = Depends(get_current_user)
+) -> UserProfileResponse:
+    """
+    Get current user profile with role and permission information
+    
+    Requires valid JWT token in Authorization header
+    
+    Returns user profile with:
+    - Basic user information
+    - Assigned roles with details
+    - Aggregated permissions list
+    """
+    from ....schemas.auth import UserRoleResponse
+    
+    # Build user roles response
+    user_roles = []
+    all_permissions = set()
+    
+    for user_role in current_user.user_roles:
+        if user_role.is_active:
+            role = user_role.role
+            role_permissions = [
+                PermissionResponse(
+                    id=perm.id,
+                    name=perm.name,
+                    description=perm.description,
+                    resource=perm.resource,
+                    action=perm.action
+                )
+                for perm in role.permissions
+            ]
+            
+            user_roles.append(UserRoleResponse(
+                role=RoleResponse(
+                    id=role.id,
+                    name=role.name,
+                    description=role.description,
+                    priority=role.priority,
+                    permissions=role_permissions
+                ),
+                is_primary=user_role.is_primary,
+                assigned_at=user_role.assigned_at
+            ))
+            
+            # Collect all permissions
+            for perm in role.permissions:
+                all_permissions.add(perm.name)
+    
+    return UserProfileResponse(
+        id=current_user.id,
+        email=current_user.email,
+        first_name=current_user.first_name,
+        last_name=current_user.last_name,
+        phone=current_user.phone,
+        is_active=current_user.is_active,
+        is_verified=current_user.is_verified,
+        email_verified=current_user.email_verified,
+        phone_verified=current_user.phone_verified,
+        created_at=current_user.created_at,
+        roles=user_roles,
+        permissions=list(all_permissions)
+    )
 
 
 @router.post(
