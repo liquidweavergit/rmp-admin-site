@@ -1,11 +1,12 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { Provider } from 'react-redux';
-import { theme } from './theme';
-import { store } from './store';
-import Home from './pages/Home';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import { Provider } from "react-redux";
+import { theme } from "./theme";
+import { store } from "./store";
+import { AppLayout } from "./components/layout";
+import Home from "./pages/Home";
+import "./App.css";
 
 function App() {
   return (
@@ -13,15 +14,15 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <Router>
-          <div className="App">
+          <AppLayout>
             <Routes>
               <Route path="/" element={<Home />} />
             </Routes>
-          </div>
+          </AppLayout>
         </Router>
       </ThemeProvider>
     </Provider>
   );
 }
 
-export default App; 
+export default App;

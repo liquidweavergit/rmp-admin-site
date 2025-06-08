@@ -1,61 +1,84 @@
-import React from 'react';
-import { Container, Typography, Box, Paper } from '@mui/material';
-import { useGetHealthQuery } from '../store';
+import React from "react";
+import { Typography, Box, Paper, Grid, Chip } from "@mui/material";
+import { useGetHealthQuery } from "../store";
+import { PageContainer } from "../components/layout";
 
 const Home: React.FC = () => {
   const { data: healthData, isLoading, error } = useGetHealthQuery();
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ mt: 4, mb: 4 }}>
-        <Typography variant="h2" component="h1" gutterBottom>
-          Men's Circle Management Platform
-        </Typography>
-        
-        <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
-          <Typography variant="h5" gutterBottom>
-            System Status
-          </Typography>
-          
-          {isLoading && <Typography>Checking system health...</Typography>}
-          
-          {error && (
-            <Typography color="error">
-              Error connecting to backend
+    <PageContainer
+      title="Dashboard"
+      subtitle="Welcome to the Men's Circle Management Platform"
+      loading={isLoading}
+    >
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Paper elevation={2} sx={{ p: 3, height: "100%" }}>
+            <Typography variant="h6" gutterBottom>
+              System Status
             </Typography>
-          )}
-          
-          {healthData && (
-            <Box>
-              <Typography color="success.main">
-                ✅ Backend Status: {healthData.status}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Service: {healthData.status || 'Unknown'}
-              </Typography>
-            </Box>
-          )}
-        </Paper>
-        
-        <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Development Environment Setup Complete
-          </Typography>
-          <Typography variant="body1">
-            This is the Men's Circle Management Platform frontend. 
-            The development environment has been successfully configured with:
-          </Typography>
-          <Box component="ul" sx={{ mt: 2 }}>
-            <li>React 18 with TypeScript</li>
-            <li>Material-UI for components</li>
-            <li>Redux Toolkit for state management</li>
-            <li>React Router for navigation</li>
-            <li>RTK Query for API integration</li>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
+
+            {error && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Chip label="Offline" color="error" size="small" />
+                <Typography color="error" variant="body2">
+                  Error connecting to backend
+                </Typography>
+              </Box>
+            )}
+
+            {healthData && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Chip label="Online" color="success" size="small" />
+                <Typography color="success.main" variant="body2">
+                  Backend Status: {healthData.status}
+                </Typography>
+              </Box>
+            )}
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Paper elevation={2} sx={{ p: 3, height: "100%" }}>
+            <Typography variant="h6" gutterBottom>
+              Quick Actions
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Navigation and quick actions will be available here once authentication is
+              implemented.
+            </Typography>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12}>
+          <Paper elevation={2} sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Development Environment
+            </Typography>
+            <Typography variant="body1" paragraph>
+              The development environment has been successfully configured with responsive layout
+              components:
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Chip label="React 18 + TypeScript" variant="outlined" />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Chip label="Material-UI Components" variant="outlined" />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Chip label="Redux Toolkit" variant="outlined" />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Chip label="Responsive Layout" variant="outlined" />
+              </Grid>
+            </Grid>
+          </Paper>
+        </Grid>
+      </Grid>
+    </PageContainer>
   );
 };
 
-export default Home; 
+export default Home;
