@@ -28,6 +28,9 @@ class UserCredentials(CredentialsBase):
     
     # OAuth tokens (encrypted)
     google_oauth_token = Column(LargeBinary, nullable=True)
+    google_user_id = Column(String(255), nullable=True, unique=True)  # Google sub claim
+    google_access_token = Column(LargeBinary, nullable=True)  # Encrypted access token
+    google_refresh_token = Column(LargeBinary, nullable=True)  # Encrypted refresh token
     refresh_token_hash = Column(String(255), nullable=True)
     
     # Phone verification

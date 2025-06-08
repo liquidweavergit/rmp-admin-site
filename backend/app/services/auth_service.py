@@ -35,9 +35,12 @@ from ..schemas.auth import (
     UserResponse,
     SendVerificationSMSRequest,
     VerifyPhoneSMSRequest,
-    SMSVerificationResponse
+    SMSVerificationResponse,
+    GoogleOAuthLoginRequest,
+    GoogleOAuthResponse
 )
 from .sms_service import SMSService, get_sms_service
+from .google_oauth_service import GoogleOAuthService, get_google_oauth_service
 
 
 class AuthService:
@@ -48,10 +51,11 @@ class AuthService:
     MAX_SMS_ATTEMPTS = 3
     SMS_EXPIRY_MINUTES = 10
     
-    def __init__(self, main_db: AsyncSession, credentials_db: AsyncSession, sms_service: SMSService = None):
+    def __init__(self, main_db: AsyncSession, credentials_db: AsyncSession, sms_service: SMSService = None, google_oauth_service: GoogleOAuthService = None):
         self.main_db = main_db
         self.credentials_db = credentials_db
         self.sms_service = sms_service or get_sms_service()
+        self.google_oauth_service = google_oauth_service or get_google_oauth_service()
     
     async def register_user(self, user_data: UserCreate) -> UserResponse:
         """
@@ -422,6 +426,92 @@ class AuthService:
             message="Phone number verified successfully"
         )
     
+    async def authenticate_google_oauth(self, request: GoogleOAuthLoginRequest) -> GoogleOAuthResponse:
+        """
+        Authenticate user with Google OAuth ID token
+        
+        Args:
+            request: Google OAuth login request with ID token
+            
+        Returns:
+            GoogleOAuthResponse: Authentication response with tokens and user info
+            
+        Raises:
+            HTTPException: If authentication fails
+        """
+        # Verify the Google ID token
+        google_user_info = await self.google_oauth_service.verify_id_token(request.id_token)
+        
+        google_user_id = google_user_info.get("sub")
+        email = google_user_info.get("email")
+        email_verified = google_user_info.get("email_verified", False)
+        
+        if not google_user_id or not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid Google token: missing required user information"
+            )
+        
+        if not email_verified:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Google email not verified"
+            )
+        
+        # Check if user exists by Google ID
+        existing_user = await self._get_user_by_google_id(google_user_id)
+        is_new_user = False
+        
+        if existing_user:
+            user = existing_user
+        else:
+            # Check if user exists by email
+            existing_user_by_email = await self._get_user_by_email(email)
+            
+            if existing_user_by_email:
+                # Link Google account to existing user
+                user = existing_user_by_email
+                await self._link_google_account(user.id, google_user_id, request.access_token)
+            else:
+                # Create new user
+                user = await self._create_google_user(google_user_info)
+                await self._link_google_account(user.id, google_user_id, request.access_token)
+                is_new_user = True
+        
+        # Update last login
+        await self._update_last_login(user)
+        
+        # Create JWT tokens
+        token_data = {"sub": str(user.id), "email": user.email}
+        access_token = create_access_token(token_data)
+        refresh_token = create_refresh_token(token_data)
+        
+        # Store refresh token
+        credentials = await self._get_user_credentials(user.id)
+        if credentials:
+            await self._store_refresh_token(credentials, refresh_token)
+        
+        user_response = UserResponse(
+            id=user.id,
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            phone=user.phone,
+            is_active=user.is_active,
+            is_verified=user.is_verified,
+            email_verified=user.email_verified,
+            phone_verified=user.phone_verified,
+            created_at=user.created_at
+        )
+        
+        return GoogleOAuthResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            user=user_response,
+            is_new_user=is_new_user
+        )
+    
     # Private helper methods
     
     async def _get_user_by_email(self, email: str) -> Optional[User]:
@@ -499,6 +589,75 @@ class AuthService:
         """Clear phone verification code and expiry"""
         credentials.phone_verification_code = None
         credentials.phone_verification_expires_at = None
+        await self.credentials_db.commit()
+    
+    async def _get_user_by_google_id(self, google_user_id: str) -> Optional[User]:
+        """Get user by Google user ID from credentials database"""
+        # First get the user_id from credentials
+        result = await self.credentials_db.execute(
+            select(UserCredentials).where(UserCredentials.google_user_id == google_user_id)
+        )
+        credentials = result.scalar_one_or_none()
+        
+        if not credentials:
+            return None
+        
+        # Then get the user from main database
+        return await self._get_user_by_id(credentials.user_id)
+    
+    async def _create_google_user(self, google_user_info: dict) -> User:
+        """Create a new user from Google user information"""
+        # Extract user information from Google
+        email = google_user_info.get("email")
+        given_name = google_user_info.get("given_name", "")
+        family_name = google_user_info.get("family_name", "")
+        
+        # Create user in main database
+        user = User(
+            email=email,
+            first_name=given_name,
+            last_name=family_name,
+            phone=None,
+            is_active=True,
+            is_verified=True,  # Google users are pre-verified
+            email_verified=True,  # Google email is verified
+            phone_verified=False
+        )
+        
+        self.main_db.add(user)
+        await self.main_db.commit()
+        await self.main_db.refresh(user)
+        
+        # Create credentials entry (without password for OAuth users)
+        credentials = UserCredentials(
+            user_id=user.id,
+            password_hash="",  # No password for OAuth users
+            salt="",
+            failed_login_attempts=0
+        )
+        
+        self.credentials_db.add(credentials)
+        await self.credentials_db.commit()
+        
+        return user
+    
+    async def _link_google_account(self, user_id: int, google_user_id: str, access_token: Optional[str] = None) -> None:
+        """Link Google account to existing user"""
+        credentials = await self._get_user_credentials(user_id)
+        if not credentials:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User credentials not found"
+            )
+        
+        # Store Google user ID and optionally access token
+        credentials.google_user_id = google_user_id
+        
+        # Note: In production, you would encrypt the access token
+        # For now, we'll store it as-is for simplicity
+        if access_token:
+            credentials.google_access_token = access_token.encode('utf-8')
+        
         await self.credentials_db.commit()
 
 

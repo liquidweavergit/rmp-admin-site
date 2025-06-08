@@ -14,9 +14,15 @@ from ....schemas.auth import (
     AuthStatus,
     SendVerificationSMSRequest,
     VerifyPhoneSMSRequest,
-    SMSVerificationResponse
+    SMSVerificationResponse,
+    GoogleOAuthUrlRequest,
+    GoogleOAuthUrlResponse,
+    GoogleOAuthCallbackRequest,
+    GoogleOAuthLoginRequest,
+    GoogleOAuthResponse
 )
 from ....services.auth_service import AuthService, get_auth_service
+from ....services.google_oauth_service import GoogleOAuthService, get_google_oauth_service
 from ....core.deps import get_current_user, get_current_user_optional
 from ....models.user import User
 
@@ -265,4 +271,118 @@ async def verify_sms_code(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to verify SMS code"
+        )
+
+
+@router.post(
+    "/google/auth-url",
+    response_model=GoogleOAuthUrlResponse,
+    summary="Get Google OAuth authorization URL",
+    description="Generate Google OAuth authorization URL for frontend redirect"
+)
+async def get_google_auth_url(
+    request: GoogleOAuthUrlRequest,
+    google_oauth_service: GoogleOAuthService = Depends(get_google_oauth_service)
+) -> GoogleOAuthUrlResponse:
+    """
+    Get Google OAuth authorization URL
+    
+    - **redirect_uri**: Where Google should redirect after authentication
+    - **state**: Optional state parameter for CSRF protection
+    
+    Returns Google OAuth authorization URL and state parameter
+    """
+    try:
+        authorization_url = google_oauth_service.get_authorization_url(
+            redirect_uri=request.redirect_uri,
+            state=request.state
+        )
+        
+        # Extract state from URL if not provided
+        state = request.state
+        if not state and "state=" in authorization_url:
+            state = authorization_url.split("state=")[1].split("&")[0]
+        
+        return GoogleOAuthUrlResponse(
+            authorization_url=authorization_url,
+            state=state or "default"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate Google OAuth URL"
+        )
+
+
+@router.post(
+    "/google/callback",
+    response_model=GoogleOAuthResponse,
+    summary="Handle Google OAuth callback",
+    description="Process Google OAuth callback with authorization code"
+)
+async def google_oauth_callback(
+    request: GoogleOAuthCallbackRequest,
+    auth_service: AuthService = Depends(get_auth_service),
+    google_oauth_service: GoogleOAuthService = Depends(get_google_oauth_service)
+) -> GoogleOAuthResponse:
+    """
+    Handle Google OAuth callback
+    
+    - **code**: Authorization code from Google
+    - **state**: State parameter from authorization request
+    - **redirect_uri**: Redirect URI used in authorization
+    
+    Returns JWT tokens and user information
+    """
+    try:
+        # Exchange code for tokens
+        token_data = await google_oauth_service.exchange_code_for_tokens(
+            code=request.code,
+            redirect_uri=request.redirect_uri
+        )
+        
+        # Create login request with ID token
+        login_request = GoogleOAuthLoginRequest(
+            id_token=token_data.get("id_token"),
+            access_token=token_data.get("access_token")
+        )
+        
+        # Authenticate user
+        return await auth_service.authenticate_google_oauth(login_request)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Google OAuth authentication failed"
+        )
+
+
+@router.post(
+    "/google/login",
+    response_model=GoogleOAuthResponse,
+    summary="Login with Google ID token",
+    description="Authenticate user directly with Google ID token"
+)
+async def google_oauth_login(
+    request: GoogleOAuthLoginRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+) -> GoogleOAuthResponse:
+    """
+    Login with Google ID token
+    
+    - **id_token**: Google ID token from client-side authentication
+    - **access_token**: Optional Google access token
+    
+    Returns JWT tokens and user information
+    """
+    try:
+        return await auth_service.authenticate_google_oauth(request)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Google OAuth login failed"
         ) 

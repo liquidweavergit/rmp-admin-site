@@ -183,4 +183,38 @@ class SMSVerificationResponse(BaseModel):
     """Schema for SMS verification operation responses"""
     success: bool = Field(..., description="Whether the operation was successful")
     message: str = Field(..., description="Response message")
-    expires_at: Optional[datetime] = Field(None, description="When the verification code expires") 
+    expires_at: Optional[datetime] = Field(None, description="When the verification code expires")
+
+
+class GoogleOAuthUrlRequest(BaseModel):
+    """Schema for Google OAuth authorization URL request"""
+    redirect_uri: str = Field(..., description="Where Google should redirect after authentication")
+    state: Optional[str] = Field(None, description="Optional state parameter for CSRF protection")
+
+
+class GoogleOAuthUrlResponse(BaseModel):
+    """Schema for Google OAuth authorization URL response"""
+    authorization_url: str = Field(..., description="Google OAuth authorization URL")
+    state: str = Field(..., description="State parameter for CSRF protection")
+
+
+class GoogleOAuthCallbackRequest(BaseModel):
+    """Schema for Google OAuth callback request"""
+    code: str = Field(..., description="Authorization code from Google")
+    state: str = Field(..., description="State parameter from authorization request")
+    redirect_uri: str = Field(..., description="Redirect URI used in authorization")
+
+
+class GoogleOAuthLoginRequest(BaseModel):
+    """Schema for Google OAuth login with ID token"""
+    id_token: str = Field(..., description="Google ID token")
+    access_token: Optional[str] = Field(None, description="Google access token")
+
+
+class GoogleOAuthResponse(BaseModel):
+    """Schema for Google OAuth response"""
+    access_token: str = Field(..., description="JWT access token")
+    refresh_token: str = Field(..., description="JWT refresh token")
+    token_type: str = Field(default="bearer", description="Token type")
+    user: UserResponse = Field(..., description="User information")
+    is_new_user: bool = Field(..., description="Whether this is a newly created user") 

@@ -17,6 +17,11 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 
+# OAuth and Google integration
+google-auth==2.23.4
+google-auth-oauthlib==1.1.0
+google-auth-httplib2==0.2.0
+
 # Payment processing
 stripe==7.8.0
 
@@ -33,4 +38,5 @@ email-validator==2.1.0
 
 # Development and testing
 pytest==7.4.3
-pytest-asyncio==0.21.1 
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0 
