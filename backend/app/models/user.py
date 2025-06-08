@@ -2,6 +2,7 @@
 User model for the main application database
 """
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..core.database import Base
 
@@ -38,6 +39,9 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Relationships
+    user_roles = relationship("UserRole", back_populates="user", foreign_keys="UserRole.user_id")
     
     def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}', name='{self.first_name} {self.last_name}')>" 
