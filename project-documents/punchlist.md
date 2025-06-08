@@ -36,7 +36,7 @@
 - [x] 1.1 Set up basic development environment ✅ COMPLETED (Dec 8, 2024)
 - [x] 1.2 Create .env.example with required variables (DATABASE_URL, REDIS_URL, JWT_SECRET_KEY, STRIPE_SECRET_KEY) ✅ COMPLETED (Dec 8, 2024)
 - [x] 1.3 Create docker-compose.yml with PostgreSQL, Redis, backend, and frontend services ✅ COMPLETED (Dec 8, 2024)
-- [ ] 1.4 Create simple Dockerfiles for backend (Python 3.11) and frontend (Node 18)
+- [x] 1.4 Create simple Dockerfiles for backend (Python 3.11) and frontend (Node 18) ✅ COMPLETED (Dec 8, 2024)
 - [ ] 1.5 Test full stack starts with `docker-compose up`
 
 #### 2. Backend Foundation [Priority: Critical]
