@@ -138,4 +138,49 @@ class AuthError(BaseModel):
 class AuthStatus(BaseModel):
     """Schema for authentication status check"""
     authenticated: bool = Field(..., description="Whether user is authenticated")
-    user: Optional[UserResponse] = Field(None, description="User information if authenticated") 
+    user: Optional[UserResponse] = Field(None, description="User information if authenticated")
+
+
+class SendVerificationSMSRequest(BaseModel):
+    """Schema for sending SMS verification code"""
+    phone: str = Field(..., description="Phone number to send verification code to")
+    
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        """Validate phone number format"""
+        if not v:
+            raise ValueError('Phone number is required')
+        
+        # Remove all non-digit characters for validation
+        digits_only = ''.join(filter(str.isdigit, v))
+        
+        if len(digits_only) < 10 or len(digits_only) > 15:
+            raise ValueError('Phone number must be between 10 and 15 digits')
+        
+        return v
+
+
+class VerifyPhoneSMSRequest(BaseModel):
+    """Schema for verifying SMS code"""
+    phone: str = Field(..., description="Phone number being verified")
+    code: str = Field(..., description="6-digit verification code")
+    
+    @field_validator('code')
+    @classmethod
+    def validate_code(cls, v: str) -> str:
+        """Validate verification code format"""
+        if not v:
+            raise ValueError('Verification code is required')
+        
+        if not v.isdigit() or len(v) != 6:
+            raise ValueError('Verification code must be 6 digits')
+        
+        return v
+
+
+class SMSVerificationResponse(BaseModel):
+    """Schema for SMS verification operation responses"""
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Response message")
+    expires_at: Optional[datetime] = Field(None, description="When the verification code expires") 

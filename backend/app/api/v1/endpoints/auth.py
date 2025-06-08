@@ -11,7 +11,10 @@ from ....schemas.auth import (
     TokenResponse, 
     RefreshTokenRequest,
     LogoutRequest,
-    AuthStatus
+    AuthStatus,
+    SendVerificationSMSRequest,
+    VerifyPhoneSMSRequest,
+    SMSVerificationResponse
 )
 from ....services.auth_service import AuthService, get_auth_service
 from ....core.deps import get_current_user, get_current_user_optional
@@ -205,4 +208,61 @@ async def auth_status(
             )
         )
     else:
-        return AuthStatus(authenticated=False, user=None) 
+        return AuthStatus(authenticated=False, user=None)
+
+
+@router.post(
+    "/send-sms-verification",
+    response_model=SMSVerificationResponse,
+    summary="Send SMS verification code",
+    description="Send a verification code to the user's phone number via SMS"
+)
+async def send_sms_verification(
+    request: SendVerificationSMSRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+) -> SMSVerificationResponse:
+    """
+    Send SMS verification code to phone number
+    
+    - **phone**: Phone number to send verification code to
+    
+    Returns confirmation that SMS was sent with expiry time
+    """
+    try:
+        return await auth_service.send_phone_verification_sms(request)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send SMS verification code"
+        )
+
+
+@router.post(
+    "/verify-sms-code",
+    response_model=SMSVerificationResponse,
+    summary="Verify SMS code",
+    description="Verify the SMS verification code sent to the user's phone"
+)
+async def verify_sms_code(
+    request: VerifyPhoneSMSRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+) -> SMSVerificationResponse:
+    """
+    Verify SMS verification code
+    
+    - **phone**: Phone number that received the verification code
+    - **code**: 6-digit verification code from SMS
+    
+    Returns confirmation that phone number has been verified
+    """
+    try:
+        return await auth_service.verify_phone_sms_code(request)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to verify SMS code"
+        ) 

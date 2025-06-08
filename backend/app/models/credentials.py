@@ -30,6 +30,11 @@ class UserCredentials(CredentialsBase):
     google_oauth_token = Column(LargeBinary, nullable=True)
     refresh_token_hash = Column(String(255), nullable=True)
     
+    # Phone verification
+    phone_verification_code = Column(String(10), nullable=True)
+    phone_verification_expires_at = Column(DateTime(timezone=True), nullable=True)
+    phone_verification_attempts = Column(Integer, default=0, nullable=False)
+    
     # Security tracking
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)

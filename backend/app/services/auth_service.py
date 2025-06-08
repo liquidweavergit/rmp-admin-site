@@ -7,6 +7,7 @@ This service handles user authentication including:
 - JWT token generation and verification
 - Password reset functionality
 - Account lockout protection
+- SMS phone verification
 """
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
@@ -27,7 +28,16 @@ from ..core.security import (
     generate_verification_code
 )
 from ..core.database import get_main_db, get_credentials_db
-from ..schemas.auth import UserCreate, UserLogin, TokenResponse, UserResponse
+from ..schemas.auth import (
+    UserCreate, 
+    UserLogin, 
+    TokenResponse, 
+    UserResponse,
+    SendVerificationSMSRequest,
+    VerifyPhoneSMSRequest,
+    SMSVerificationResponse
+)
+from .sms_service import SMSService, get_sms_service
 
 
 class AuthService:
@@ -35,10 +45,13 @@ class AuthService:
     
     MAX_LOGIN_ATTEMPTS = 5
     LOCKOUT_DURATION_MINUTES = 30
+    MAX_SMS_ATTEMPTS = 3
+    SMS_EXPIRY_MINUTES = 10
     
-    def __init__(self, main_db: AsyncSession, credentials_db: AsyncSession):
+    def __init__(self, main_db: AsyncSession, credentials_db: AsyncSession, sms_service: SMSService = None):
         self.main_db = main_db
         self.credentials_db = credentials_db
+        self.sms_service = sms_service or get_sms_service()
     
     async def register_user(self, user_data: UserCreate) -> UserResponse:
         """
@@ -275,6 +288,140 @@ class AuthService:
         
         return True
     
+    async def send_phone_verification_sms(self, request: SendVerificationSMSRequest) -> SMSVerificationResponse:
+        """
+        Send SMS verification code to phone number
+        
+        Args:
+            request: SMS verification request
+            
+        Returns:
+            SMSVerificationResponse: Response with send status
+            
+        Raises:
+            HTTPException: If phone number is invalid or send fails
+        """
+        # Validate phone number
+        if not self.sms_service.validate_phone_number(request.phone):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid phone number format"
+            )
+        
+        # Find user by phone number
+        user = await self._get_user_by_phone(request.phone)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Phone number not found in system"
+            )
+        
+        # Get or create credentials
+        credentials = await self._get_user_credentials(user.id)
+        if not credentials:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User credentials not found"
+            )
+        
+        # Check if too many SMS attempts
+        if credentials.phone_verification_attempts >= self.MAX_SMS_ATTEMPTS:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many SMS verification attempts. Please try again later."
+            )
+        
+        # Generate verification code
+        verification_code = self.sms_service.generate_verification_code()
+        expires_at = datetime.utcnow() + timedelta(minutes=self.SMS_EXPIRY_MINUTES)
+        
+        # Store verification code
+        credentials.phone_verification_code = verification_code
+        credentials.phone_verification_expires_at = expires_at
+        credentials.phone_verification_attempts += 1
+        await self.credentials_db.commit()
+        
+        # Send SMS
+        try:
+            await self.sms_service.send_verification_code(request.phone, verification_code)
+            return SMSVerificationResponse(
+                success=True,
+                message="Verification code sent successfully",
+                expires_at=expires_at
+            )
+        except HTTPException:
+            # Roll back the attempt count if SMS fails
+            credentials.phone_verification_attempts -= 1
+            await self.credentials_db.commit()
+            raise
+    
+    async def verify_phone_sms_code(self, request: VerifyPhoneSMSRequest) -> SMSVerificationResponse:
+        """
+        Verify SMS verification code
+        
+        Args:
+            request: SMS verification request with code
+            
+        Returns:
+            SMSVerificationResponse: Response with verification status
+            
+        Raises:
+            HTTPException: If verification fails
+        """
+        # Find user by phone number
+        user = await self._get_user_by_phone(request.phone)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Phone number not found in system"
+            )
+        
+        # Get credentials
+        credentials = await self._get_user_credentials(user.id)
+        if not credentials:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User credentials not found"
+            )
+        
+        # Check if verification code exists
+        if not credentials.phone_verification_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No verification code found. Please request a new code."
+            )
+        
+        # Check if code has expired
+        if (credentials.phone_verification_expires_at and 
+            self.sms_service.is_code_expired(credentials.phone_verification_expires_at, 0)):
+            # Clear expired code
+            await self._clear_phone_verification_code(credentials)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Verification code has expired. Please request a new code."
+            )
+        
+        # Verify code
+        if credentials.phone_verification_code != request.code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid verification code"
+            )
+        
+        # Mark phone as verified
+        user.phone_verified = True
+        await self.main_db.commit()
+        
+        # Clear verification code and reset attempts
+        await self._clear_phone_verification_code(credentials)
+        credentials.phone_verification_attempts = 0
+        await self.credentials_db.commit()
+        
+        return SMSVerificationResponse(
+            success=True,
+            message="Phone number verified successfully"
+        )
+    
     # Private helper methods
     
     async def _get_user_by_email(self, email: str) -> Optional[User]:
@@ -339,6 +486,19 @@ class AuthService:
     async def _clear_refresh_token(self, credentials: UserCredentials) -> None:
         """Clear stored refresh token"""
         credentials.refresh_token_hash = None
+        await self.credentials_db.commit()
+    
+    async def _get_user_by_phone(self, phone: str) -> Optional[User]:
+        """Get user by phone number from main database"""
+        result = await self.main_db.execute(
+            select(User).where(User.phone == phone)
+        )
+        return result.scalar_one_or_none()
+    
+    async def _clear_phone_verification_code(self, credentials: UserCredentials) -> None:
+        """Clear phone verification code and expiry"""
+        credentials.phone_verification_code = None
+        credentials.phone_verification_expires_at = None
         await self.credentials_db.commit()
 
 
