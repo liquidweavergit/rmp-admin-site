@@ -6,6 +6,8 @@ import { theme } from "./theme";
 import { store } from "./store";
 import { AppLayout } from "./components/layout";
 import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import "./App.css";
 
 function App() {
@@ -17,6 +19,8 @@ function App() {
           <AppLayout>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
             </Routes>
           </AppLayout>
         </Router>
