@@ -58,9 +58,9 @@ class Circle(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     
-    # Relationships (will be expanded when CircleMembership is implemented)
+    # Relationships
     facilitator = relationship("User", foreign_keys=[facilitator_id])
-    # members = relationship("CircleMembership", back_populates="circle")
+    members = relationship("CircleMembership", back_populates="circle")
     
     def __init__(self, **kwargs):
         """Initialize Circle with validation."""
@@ -138,9 +138,13 @@ class Circle(Base):
     @property
     def current_member_count(self) -> int:
         """Get current number of members in the circle."""
-        # For now, return 0 until CircleMembership relationship is implemented
-        # In the future, this will count active memberships
-        return getattr(self, '_current_member_count', 0)
+        # For testing, allow mock member count
+        if hasattr(self, '_current_member_count'):
+            return self._current_member_count
+        # Count active memberships
+        if hasattr(self, 'members') and self.members:
+            return len([m for m in self.members if m.is_active])
+        return 0
     
     @property
     def status_enum(self) -> CircleStatus:

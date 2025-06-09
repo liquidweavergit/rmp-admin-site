@@ -7,5 +7,7 @@ from .user import User
 from .credentials import UserCredentials
 from .role import Role, Permission, UserRole, RoleAuditLog
 from .circle import Circle, CircleStatus
+from .circle_membership import CircleMembership, PaymentStatus
 
-__all__ = ["User", "UserCredentials", "Role", "Permission", "UserRole", "RoleAuditLog", "Circle", "CircleStatus"] 
+__all__ = ["User", "UserCredentials", "Role", "Permission", "UserRole", "RoleAuditLog", 
+           "Circle", "CircleStatus", "CircleMembership", "PaymentStatus"] 

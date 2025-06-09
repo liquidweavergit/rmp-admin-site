@@ -42,6 +42,7 @@ class User(Base):
     
     # Relationships
     user_roles = relationship("UserRole", back_populates="user", foreign_keys="UserRole.user_id")
+    circle_memberships = relationship("CircleMembership", back_populates="user")
     
     def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}', name='{self.first_name} {self.last_name}')>" 
