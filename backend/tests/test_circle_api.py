@@ -7,6 +7,7 @@ from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime
 from fastapi import status
 from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 from app.models.circle import Circle, CircleStatus
 from app.models.user import User
@@ -59,7 +60,7 @@ class TestCircleCreationAPI:
         # Assert
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_create_circle_with_minimal_data(self, client: TestClient, mock_current_user: User):
+    async def test_create_circle_with_minimal_data(self, async_client: AsyncClient, mock_current_user: User):
         """Test circle creation with minimal required data."""
         # Arrange
         circle_data = {

@@ -2,7 +2,7 @@
 API v1 endpoints package for the Men's Circle Management Platform
 """
 
-from . import health, circles
+from . import health, circles, meetings
 # from . import auth  # Temporarily commented out
 
-__all__ = ["health", "circles"]  # "auth" temporarily removed 
+__all__ = ["health", "circles", "meetings"]  # "auth" temporarily removed 

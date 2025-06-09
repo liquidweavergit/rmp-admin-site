@@ -61,6 +61,7 @@ class Circle(Base):
     # Relationships
     facilitator = relationship("User", foreign_keys=[facilitator_id])
     members = relationship("CircleMembership", back_populates="circle")
+    meetings = relationship("Meeting", back_populates="circle", cascade="all, delete-orphan")
     
     def __init__(self, **kwargs):
         """Initialize Circle with validation."""
