@@ -43,12 +43,12 @@ class TransferRequest(Base):
     requester_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     source_circle_id = Column(Integer, ForeignKey("circles.id"), nullable=False, index=True)
     target_circle_id = Column(Integer, ForeignKey("circles.id"), nullable=False, index=True)
-    reason = Column(Text(1000), nullable=True)
+    reason = Column(String(1000), nullable=True)
     status = Column(SQLEnum(TransferRequestStatus), nullable=False, default=TransferRequestStatus.PENDING, index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
     reviewed_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
-    review_notes = Column(Text(1000), nullable=True)
+    review_notes = Column(String(1000), nullable=True)
 
     # Relationships
     requester = relationship("User", foreign_keys=[requester_id], back_populates="transfer_requests")
