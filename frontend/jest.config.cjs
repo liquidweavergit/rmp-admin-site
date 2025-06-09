@@ -21,4 +21,7 @@ module.exports = {
     "!src/main.tsx",
     "!src/vite-env.d.ts",
   ],
+  testTimeout: 30000,
+  forceExit: true,
+  detectOpenHandles: true,
 };

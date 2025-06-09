@@ -118,6 +118,10 @@ async def init_db():
         await conn.run_sync(CredentialsBase.metadata.create_all)
 
 
+# Compatibility alias for common usage
+get_db = get_main_db
+
+
 async def close_db():
     """Close database connections"""
     global _main_engine, _credentials_engine
