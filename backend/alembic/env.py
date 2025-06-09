@@ -30,6 +30,7 @@ config.set_main_option("sqlalchemy.url", settings.database_url.replace("+asyncpg
 
 # Import all models here to ensure they are registered with Base.metadata
 from app.models.user import User
+from app.models.circle import Circle
 
 # add your model's MetaData object here
 # for 'autogenerate' support

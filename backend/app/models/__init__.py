@@ -6,5 +6,6 @@ Database models for the Men's Circle Management Platform
 from .user import User
 from .credentials import UserCredentials
 from .role import Role, Permission, UserRole, RoleAuditLog
+from .circle import Circle, CircleStatus
 
-__all__ = ["User", "UserCredentials", "Role", "Permission", "UserRole", "RoleAuditLog"] 
+__all__ = ["User", "UserCredentials", "Role", "Permission", "UserRole", "RoleAuditLog", "Circle", "CircleStatus"] 
