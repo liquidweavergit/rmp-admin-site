@@ -120,6 +120,176 @@ interface GoogleOAuthResponse {
   user: UserResponse;
 }
 
+// Circle-related interfaces
+interface CircleCreate {
+  name: string;
+  description?: string;
+  capacity_min?: number;
+  capacity_max?: number;
+  location_name?: string;
+  location_address?: string;
+  meeting_schedule?: Record<string, any>;
+}
+
+interface CircleUpdate {
+  name?: string;
+  description?: string;
+  capacity_min?: number;
+  capacity_max?: number;
+  location_name?: string;
+  location_address?: string;
+  meeting_schedule?: Record<string, any>;
+  status?: string;
+  is_active?: boolean;
+}
+
+interface CircleResponse {
+  id: number;
+  name: string;
+  description?: string;
+  facilitator_id: number;
+  capacity_min: number;
+  capacity_max: number;
+  location_name?: string;
+  location_address?: string;
+  meeting_schedule?: Record<string, any>;
+  status: string;
+  is_active: boolean;
+  current_member_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CircleMemberAdd {
+  user_id: number;
+  payment_status?: string;
+}
+
+interface CircleMemberResponse {
+  user_id: number;
+  circle_id: number;
+  is_active: boolean;
+  payment_status: string;
+  joined_at: string;
+}
+
+interface CircleMemberListResponse {
+  members: CircleMemberResponse[];
+  total: number;
+}
+
+interface CircleMemberTransfer {
+  target_circle_id: number;
+  reason?: string;
+}
+
+interface CircleMemberPaymentUpdate {
+  payment_status: string;
+}
+
+interface CircleSearchParams {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  status?: string;
+  facilitator_id?: number;
+  location?: string;
+  capacity_min?: number;
+  capacity_max?: number;
+  sort_by?: string;
+  sort_order?: string;
+}
+
+// Meeting-related interfaces
+interface MeetingCreate {
+  title: string;
+  description?: string;
+  scheduled_date: string;
+  circle_id: number;
+  facilitator_id?: number;
+  location_name?: string;
+  location_address?: string;
+  agenda?: Record<string, any>;
+}
+
+interface AttendanceSummary {
+  total_expected: number;
+  total_present: number;
+  total_late: number;
+  total_absent: number;
+  attendance_rate: number;
+}
+
+interface MeetingResponse {
+  id: number;
+  title: string;
+  description?: string;
+  scheduled_date: string;
+  circle_id: number;
+  facilitator_id: number;
+  location_name?: string;
+  location_address?: string;
+  agenda?: Record<string, any>;
+  status: string;
+  is_active: boolean;
+  started_at?: string;
+  ended_at?: string;
+  meeting_notes?: string;
+  duration_minutes?: number;
+  attendance_summary: AttendanceSummary;
+  created_at: string;
+  updated_at: string;
+}
+
+interface MeetingListResponse {
+  meetings: MeetingResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+interface MeetingSearchParams {
+  page?: number;
+  per_page?: number;
+  circle_id?: number;
+  facilitator_id?: number;
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+  search?: string;
+}
+
+// Additional interfaces for CircleMemberView
+interface UserAttendanceResponse {
+  status: "present" | "late" | "absent";
+  checked_in_at?: string;
+  checked_out_at?: string;
+  notes?: string;
+}
+
+interface MeetingWithAttendanceResponse extends MeetingResponse {
+  user_attendance?: UserAttendanceResponse;
+}
+
+interface MembershipStatsResponse {
+  total_meetings_scheduled: number;
+  meetings_attended: number;
+  meetings_late: number;
+  meetings_absent: number;
+  attendance_rate: number;
+  current_streak: number;
+  longest_streak: number;
+}
+
+interface CircleMembershipDetailsResponse {
+  user_id: number;
+  circle_id: number;
+  is_active: boolean;
+  payment_status: string;
+  joined_at: string;
+  membership_stats: MembershipStatsResponse;
+}
+
 // Define the API base query
 const baseQuery = fetchBaseQuery({
   baseUrl: process.env.REACT_APP_API_URL || "http://localhost:8000",
@@ -140,7 +310,7 @@ const baseQuery = fetchBaseQuery({
 export const api = createApi({
   reducerPath: "api",
   baseQuery,
-  tagTypes: ["User", "Circle", "Event", "Auth"],
+  tagTypes: ["User", "Circle", "Event", "Auth", "Meeting"],
   endpoints: (builder) => ({
     // Health check
     getHealth: builder.query<{ status: string }, void>({
@@ -234,6 +404,169 @@ export const api = createApi({
         body: loginData,
       }),
       invalidatesTags: ["Auth"],
+    }),
+
+    // Circle endpoints
+    getCircles: builder.query<CircleResponse[], CircleSearchParams | void>({
+      query: (searchParams) => {
+        const params = new URLSearchParams();
+        if (searchParams) {
+          Object.entries(searchParams).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+              params.append(key, value.toString());
+            }
+          });
+        }
+        return `/api/v1/circles?${params.toString()}`;
+      },
+      providesTags: ["Circle"],
+    }),
+
+    getCircle: builder.query<CircleResponse, number>({
+      query: (circleId) => `/api/v1/circles/${circleId}`,
+      providesTags: (result, error, circleId) => [{ type: "Circle", id: circleId }],
+    }),
+
+    createCircle: builder.mutation<CircleResponse, CircleCreate>({
+      query: (circleData) => ({
+        url: "/api/v1/circles",
+        method: "POST",
+        body: circleData,
+      }),
+      invalidatesTags: ["Circle"],
+    }),
+
+    updateCircle: builder.mutation<CircleResponse, { id: number; data: CircleUpdate }>({
+      query: ({ id, data }) => ({
+        url: `/api/v1/circles/${id}`,
+        method: "PUT",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: "Circle", id }],
+    }),
+
+    getCircleMembers: builder.query<CircleMemberListResponse, number>({
+      query: (circleId) => `/api/v1/circles/${circleId}/members`,
+      providesTags: (result, error, circleId) => [{ type: "Circle", id: circleId }, "Circle"],
+    }),
+
+    addCircleMember: builder.mutation<
+      CircleMemberResponse,
+      { circleId: number; member: CircleMemberAdd }
+    >({
+      query: ({ circleId, member }) => ({
+        url: `/api/v1/circles/${circleId}/members`,
+        method: "POST",
+        body: member,
+      }),
+      invalidatesTags: (result, error, { circleId }) => [{ type: "Circle", id: circleId }],
+    }),
+
+    removeCircleMember: builder.mutation<void, { circleId: number; userId: number }>({
+      query: ({ circleId, userId }) => ({
+        url: `/api/v1/circles/${circleId}/members/${userId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, { circleId }) => [{ type: "Circle", id: circleId }],
+    }),
+
+    transferCircleMember: builder.mutation<
+      CircleMemberResponse,
+      { circleId: number; userId: number; transfer_data: CircleMemberTransfer }
+    >({
+      query: ({ circleId, userId, transfer_data }) => ({
+        url: `/api/v1/circles/${circleId}/members/${userId}/transfer`,
+        method: "POST",
+        body: transfer_data,
+      }),
+      invalidatesTags: (result, error, { circleId }) => [
+        { type: "Circle", id: circleId },
+        "Circle",
+      ],
+    }),
+
+    updateMemberPaymentStatus: builder.mutation<
+      CircleMemberResponse,
+      { circleId: number; userId: number; payment_data: CircleMemberPaymentUpdate }
+    >({
+      query: ({ circleId, userId, payment_data }) => ({
+        url: `/api/v1/circles/${circleId}/members/${userId}/payment`,
+        method: "PATCH",
+        body: payment_data,
+      }),
+      invalidatesTags: (result, error, { circleId }) => [{ type: "Circle", id: circleId }],
+    }),
+
+    // Meeting endpoints
+    getMeetings: builder.query<MeetingListResponse, MeetingSearchParams | void>({
+      query: (searchParams) => {
+        const params = new URLSearchParams();
+        if (searchParams) {
+          Object.entries(searchParams).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+              params.append(key, value.toString());
+            }
+          });
+        }
+        return `/api/v1/meetings?${params.toString()}`;
+      },
+      providesTags: ["Meeting"],
+    }),
+
+    getMeeting: builder.query<MeetingResponse, number>({
+      query: (meetingId) => `/api/v1/meetings/${meetingId}`,
+      providesTags: (result, error, meetingId) => [{ type: "Meeting", id: meetingId }],
+    }),
+
+    createMeeting: builder.mutation<MeetingResponse, MeetingCreate>({
+      query: (meetingData) => ({
+        url: "/api/v1/meetings",
+        method: "POST",
+        body: meetingData,
+      }),
+      invalidatesTags: ["Meeting", "Circle"],
+    }),
+
+    startMeeting: builder.mutation<MeetingResponse, number>({
+      query: (meetingId) => ({
+        url: `/api/v1/meetings/${meetingId}/start`,
+        method: "POST",
+      }),
+      invalidatesTags: (result, error, meetingId) => [{ type: "Meeting", id: meetingId }],
+    }),
+
+    endMeeting: builder.mutation<MeetingResponse, number>({
+      query: (meetingId) => ({
+        url: `/api/v1/meetings/${meetingId}/end`,
+        method: "POST",
+      }),
+      invalidatesTags: (result, error, meetingId) => [{ type: "Meeting", id: meetingId }],
+    }),
+
+    cancelMeeting: builder.mutation<MeetingResponse, number>({
+      query: (meetingId) => ({
+        url: `/api/v1/meetings/${meetingId}/cancel`,
+        method: "POST",
+      }),
+      invalidatesTags: (result, error, meetingId) => [{ type: "Meeting", id: meetingId }],
+    }),
+
+    // New endpoints for CircleMemberView
+    getUserCircles: builder.query<CircleResponse[], void>({
+      query: () => "/api/v1/users/me/circles",
+      providesTags: ["Circle"],
+    }),
+
+    getCircleMembershipDetails: builder.query<CircleMembershipDetailsResponse, number>({
+      query: (circleId) => `/api/v1/circles/${circleId}/membership/me`,
+      providesTags: (result, error, circleId) => [{ type: "Circle", id: circleId }],
+    }),
+
+    getUserAttendance: builder.query<UserAttendanceResponse[], number>({
+      query: (circleId) => `/api/v1/circles/${circleId}/meetings/attendance/me`,
+      providesTags: (result, error, circleId) => [
+        { type: "Meeting", id: `attendance-${circleId}` },
+      ],
     }),
   }),
 });
@@ -341,6 +674,24 @@ export const {
   useGetGoogleAuthUrlMutation,
   useGoogleOAuthCallbackMutation,
   useGoogleOAuthLoginMutation,
+  useGetCirclesQuery,
+  useGetCircleQuery,
+  useCreateCircleMutation,
+  useUpdateCircleMutation,
+  useGetCircleMembersQuery,
+  useAddCircleMemberMutation,
+  useRemoveCircleMemberMutation,
+  useTransferCircleMemberMutation,
+  useUpdateMemberPaymentStatusMutation,
+  useGetMeetingsQuery,
+  useGetMeetingQuery,
+  useCreateMeetingMutation,
+  useStartMeetingMutation,
+  useEndMeetingMutation,
+  useCancelMeetingMutation,
+  useGetUserCirclesQuery,
+  useGetCircleMembershipDetailsQuery,
+  useGetUserAttendanceQuery,
 } = api;
 
 // Export types for use in other modules
@@ -362,4 +713,22 @@ export type {
   GoogleOAuthCallbackRequest,
   GoogleOAuthLoginRequest,
   GoogleOAuthResponse,
+  CircleCreate,
+  CircleUpdate,
+  CircleResponse,
+  CircleMemberAdd,
+  CircleMemberResponse,
+  CircleMemberListResponse,
+  CircleMemberTransfer,
+  CircleMemberPaymentUpdate,
+  CircleSearchParams,
+  MeetingCreate,
+  AttendanceSummary,
+  MeetingResponse,
+  MeetingListResponse,
+  MeetingSearchParams,
+  UserAttendanceResponse,
+  MeetingWithAttendanceResponse,
+  MembershipStatsResponse,
+  CircleMembershipDetailsResponse,
 };
