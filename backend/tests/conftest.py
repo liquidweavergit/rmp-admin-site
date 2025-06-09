@@ -91,10 +91,11 @@ def mock_circle_membership():
     mock_membership.circle_id = 1
     mock_membership.user_id = 2
     mock_membership.is_active = True
-    mock_membership.payment_status = PaymentStatus.PENDING
+    mock_membership.payment_status = PaymentStatus.PENDING.value
     mock_membership.joined_at = datetime.utcnow()
     mock_membership.stripe_subscription_id = None
     mock_membership.next_payment_due = None
+    mock_membership.updated_at = datetime.utcnow()
     return mock_membership
 
 
@@ -142,10 +143,16 @@ def sample_circle_response():
 
 
 @pytest.fixture
-def mock_auth_dependency(mock_current_user):
-    """Mock the get_current_user dependency for authenticated endpoints."""
-    with patch('app.core.deps.get_current_user', return_value=mock_current_user):
-        yield mock_current_user
+def override_get_current_user(mock_current_user):
+    """Override the get_current_user dependency with a mock user."""
+    def _override():
+        return mock_current_user
+    
+    app.dependency_overrides[get_current_user] = _override
+    yield mock_current_user
+    # Clean up the override after test
+    if get_current_user in app.dependency_overrides:
+        del app.dependency_overrides[get_current_user]
 
 
 @pytest.fixture
@@ -168,14 +175,32 @@ def mock_circle_service():
     # Mock add_member_to_circle method
     mock_service.add_member_to_circle = AsyncMock()
     
+    # Mock remove_member_from_circle method
+    mock_service.remove_member_from_circle = AsyncMock()
+    
+    # Mock transfer_member_between_circles method
+    mock_service.transfer_member_between_circles = AsyncMock()
+    
+    # Mock get_circle_members method
+    mock_service.get_circle_members = AsyncMock()
+    
+    # Mock update_member_payment_status method
+    mock_service.update_member_payment_status = AsyncMock()
+    
     return mock_service
 
 
 @pytest.fixture
-def mock_circle_service_dependency(mock_circle_service):
-    """Mock the get_circle_service dependency."""
-    with patch('app.services.circle_service.get_circle_service', return_value=mock_circle_service):
-        yield mock_circle_service
+def override_get_circle_service(mock_circle_service):
+    """Override the get_circle_service dependency with a mock service."""
+    def _override():
+        return mock_circle_service
+    
+    app.dependency_overrides[get_circle_service] = _override
+    yield mock_circle_service
+    # Clean up the override after test
+    if get_circle_service in app.dependency_overrides:
+        del app.dependency_overrides[get_circle_service]
 
 
 @pytest.fixture
@@ -187,20 +212,12 @@ def authenticated_headers():
 @pytest.fixture
 def mock_db_session():
     """Mock database session for testing."""
-    mock_session = AsyncMock()
-    mock_session.add = Mock()
-    mock_session.commit = AsyncMock()
-    mock_session.rollback = AsyncMock()
-    mock_session.refresh = AsyncMock()
-    mock_session.execute = AsyncMock()
-    mock_session.close = AsyncMock()
-    return mock_session
+    return AsyncMock()
 
 
-# Sample data factories
 @pytest.fixture
 def circle_factory():
-    """Factory for creating circle test data."""
+    """Factory for creating test Circle instances."""
     def create_circle(**kwargs):
         defaults = {
             "id": 1,
@@ -212,7 +229,7 @@ def circle_factory():
             "location_name": "Test Location",
             "location_address": "123 Test St",
             "meeting_schedule": {"day": "Wednesday", "time": "19:00"},
-            "status": CircleStatus.FORMING,
+            "status": CircleStatus.FORMING.value,
             "is_active": True,
             "current_member_count": 0,
             "created_at": datetime.utcnow(),
@@ -231,7 +248,7 @@ def circle_factory():
 
 @pytest.fixture
 def user_factory():
-    """Factory for creating user test data."""
+    """Factory for creating test User instances."""
     def create_user(**kwargs):
         defaults = {
             "id": 1,
@@ -259,14 +276,15 @@ def user_factory():
 
 @pytest.fixture
 def membership_factory():
-    """Factory for creating membership test data."""
+    """Factory for creating test CircleMembership instances."""
     def create_membership(**kwargs):
         defaults = {
             "circle_id": 1,
             "user_id": 2,
             "is_active": True,
-            "payment_status": PaymentStatus.PENDING,
+            "payment_status": PaymentStatus.PENDING.value,
             "joined_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
             "stripe_subscription_id": None,
             "next_payment_due": None
         }
@@ -278,4 +296,9 @@ def membership_factory():
         
         return mock_membership
     
-    return create_membership 
+    return create_membership
+
+
+# Import get_current_user and get_circle_service at the end to avoid circular imports
+from app.core.deps import get_current_user
+from app.services.circle_service import get_circle_service 

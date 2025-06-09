@@ -4,6 +4,7 @@ Pydantic schemas for Circle API requests and responses
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from pydantic import BaseModel, Field, validator
+from enum import Enum
 
 from ..models.circle import CircleStatus
 
@@ -46,7 +47,7 @@ class CircleCreate(BaseModel):
     )
     meeting_schedule: Optional[Dict[str, Any]] = Field(
         None, 
-        description="Meeting schedule as JSON object"
+        description="Meeting schedule as JSON object (e.g., {'day': 'Wednesday', 'time': '19:00', 'frequency': 'weekly'})"
     )
     
     @validator('capacity_max')
@@ -66,38 +67,39 @@ class CircleCreate(BaseModel):
     
     @validator('description')
     def validate_description_length(cls, v):
-        """Validate description length if provided."""
-        if v is not None and len(v) > 1000:
-            raise ValueError('description cannot exceed 1000 characters')
+        """Ensure description is not just whitespace if provided."""
+        if v is not None and v.strip() == '':
+            return None
         return v
     
     @validator('location_name')
     def validate_location_name_length(cls, v):
-        """Validate location name length if provided."""
-        if v is not None and len(v) > 200:
-            raise ValueError('location_name cannot exceed 200 characters')
+        """Ensure location_name is not just whitespace if provided."""
+        if v is not None and v.strip() == '':
+            return None
         return v
     
     @validator('location_address')
     def validate_location_address_length(cls, v):
-        """Validate location address length if provided."""
-        if v is not None and len(v) > 500:
-            raise ValueError('location_address cannot exceed 500 characters')
+        """Ensure location_address is not just whitespace if provided."""
+        if v is not None and v.strip() == '':
+            return None
         return v
 
     class Config:
         schema_extra = {
             "example": {
                 "name": "Men's Growth Circle",
-                "description": "A circle focused on personal growth and development",
-                "capacity_min": 4,
+                "description": "A supportive circle for personal growth and development",
+                "capacity_min": 2,
                 "capacity_max": 8,
                 "location_name": "Community Center",
                 "location_address": "123 Main St, City, State 12345",
                 "meeting_schedule": {
                     "day": "Wednesday",
                     "time": "19:00",
-                    "frequency": "weekly"
+                    "frequency": "weekly",
+                    "duration": "2 hours"
                 }
             }
         }
@@ -281,6 +283,16 @@ class CircleMemberAdd(BaseModel):
         description="Initial payment status for the membership"
     )
     
+    @validator('payment_status')
+    def validate_payment_status(cls, v):
+        """Validate payment status is one of the allowed values."""
+        if v is None:
+            return "pending"  # Default value
+        allowed_statuses = {"pending", "current", "overdue", "paused"}
+        if v not in allowed_statuses:
+            raise ValueError(f'payment_status must be one of: {", ".join(allowed_statuses)}')
+        return v
+    
     class Config:
         schema_extra = {
             "example": {
@@ -308,5 +320,85 @@ class CircleMemberResponse(BaseModel):
                 "is_active": True,
                 "payment_status": "current",
                 "joined_at": "2024-06-08T18:30:00Z"
+            }
+        }
+
+
+class CircleMemberTransfer(BaseModel):
+    """Schema for transferring a member between circles."""
+    
+    target_circle_id: int = Field(..., description="Target circle ID for the transfer")
+    reason: Optional[str] = Field(
+        None, 
+        max_length=500, 
+        description="Reason for the transfer (optional, max 500 characters)"
+    )
+    
+    @validator('reason')
+    def validate_reason_length(cls, v):
+        """Ensure reason is not just whitespace if provided."""
+        if v is not None and v.strip() == '':
+            return None
+        return v
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "target_circle_id": 2,
+                "reason": "Better fit for the member's schedule and goals"
+            }
+        }
+
+
+class CircleMemberPaymentUpdate(BaseModel):
+    """Schema for updating a member's payment status."""
+    
+    payment_status: str = Field(
+        ..., 
+        description="New payment status (pending, current, overdue, paused)"
+    )
+    
+    @validator('payment_status')
+    def validate_payment_status(cls, v):
+        """Validate payment status is one of the allowed values."""
+        allowed_statuses = {"pending", "current", "overdue", "paused"}
+        if v not in allowed_statuses:
+            raise ValueError(f'payment_status must be one of: {", ".join(allowed_statuses)}')
+        return v
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "payment_status": "current"
+            }
+        }
+
+
+class CircleMemberListResponse(BaseModel):
+    """Schema for circle member list response."""
+    
+    members: List[CircleMemberResponse] = Field(..., description="List of circle members")
+    total: int = Field(..., description="Total number of members")
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "members": [
+                    {
+                        "user_id": 456,
+                        "circle_id": 1,
+                        "is_active": True,
+                        "payment_status": "current",
+                        "joined_at": "2024-06-08T18:30:00Z"
+                    },
+                    {
+                        "user_id": 789,
+                        "circle_id": 1,
+                        "is_active": True,
+                        "payment_status": "pending",
+                        "joined_at": "2024-06-09T12:00:00Z"
+                    }
+                ],
+                "total": 2
             }
         } 

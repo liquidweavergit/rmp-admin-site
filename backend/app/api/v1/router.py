@@ -2,13 +2,14 @@
 Main API v1 router for the Men's Circle Management Platform
 """
 from fastapi import APIRouter
-from .endpoints import health, auth, circles
+from .endpoints import health, circles
+# from .endpoints import auth  # Temporarily commented out
 
 router = APIRouter(prefix="/api/v1")
 
 # Include endpoint routers
 router.include_router(health.router, tags=["Health"])
-router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+# router.include_router(auth.router, prefix="/auth", tags=["Authentication"])  # Temporarily commented out
 router.include_router(circles.router, prefix="/circles", tags=["Circles"])
 
 # Placeholder for future endpoint routers

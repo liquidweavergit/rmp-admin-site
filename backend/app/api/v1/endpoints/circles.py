@@ -12,7 +12,10 @@ from ....schemas.circle import (
     CircleListResponse,
     CircleSearchParams,
     CircleMemberAdd,
-    CircleMemberResponse
+    CircleMemberResponse,
+    CircleMemberTransfer,
+    CircleMemberPaymentUpdate,
+    CircleMemberListResponse
 )
 from ....services.circle_service import CircleService, get_circle_service
 from ....core.deps import get_current_user
@@ -325,7 +328,7 @@ async def add_circle_member(
             user_id=membership.user_id,
             circle_id=membership.circle_id,
             is_active=membership.is_active,
-            payment_status=membership.payment_status.value,
+            payment_status=membership.payment_status,
             joined_at=membership.joined_at
         )
         
@@ -335,4 +338,222 @@ async def add_circle_member(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to add member to circle"
+        )
+
+
+@router.get(
+    "/{circle_id}/members",
+    response_model=CircleMemberListResponse,
+    summary="List circle members",
+    description="Get all active members of a circle"
+)
+async def list_circle_members(
+    circle_id: int,
+    current_user: User = Depends(get_current_user),
+    circle_service: CircleService = Depends(get_circle_service)
+) -> CircleMemberListResponse:
+    """
+    Get all active members of a circle.
+    
+    - **circle_id**: ID of the circle
+    
+    Access is verified based on user permissions:
+    - Facilitator can always view members
+    - Members can view other members in their circle
+    - Role-based access control (TODO: implement)
+    
+    Returns list of active memberships with payment status.
+    """
+    try:
+        memberships = await circle_service.get_circle_members(circle_id, current_user.id)
+        
+        # Convert to response format
+        member_responses = []
+        for membership in memberships:
+            member_responses.append(CircleMemberResponse(
+                user_id=membership.user_id,
+                circle_id=membership.circle_id,
+                is_active=membership.is_active,
+                payment_status=membership.payment_status,
+                joined_at=membership.joined_at
+            ))
+        
+        return CircleMemberListResponse(
+            members=member_responses,
+            total=len(member_responses)
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to list circle members"
+        )
+
+
+@router.delete(
+    "/{circle_id}/members/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove member from circle",
+    description="Remove a member from the circle (facilitator only)"
+)
+async def remove_circle_member(
+    circle_id: int,
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    circle_service: CircleService = Depends(get_circle_service)
+):
+    """
+    Remove a member from the circle.
+    
+    - **circle_id**: ID of the circle
+    - **user_id**: ID of the user to remove
+    
+    Only the circle facilitator can remove members.
+    
+    The membership is marked as inactive rather than deleted to preserve history.
+    
+    Returns 204 No Content on success, 404 if member not found.
+    """
+    try:
+        success = await circle_service.remove_member_from_circle(
+            circle_id,
+            user_id,
+            current_user.id
+        )
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Member not found in circle"
+            )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to remove member from circle"
+        )
+
+
+@router.post(
+    "/{circle_id}/members/{user_id}/transfer",
+    response_model=CircleMemberResponse,
+    summary="Transfer member between circles",
+    description="Transfer a member from one circle to another (facilitator only)"
+)
+async def transfer_circle_member(
+    circle_id: int,
+    user_id: int,
+    transfer_data: CircleMemberTransfer,
+    current_user: User = Depends(get_current_user),
+    circle_service: CircleService = Depends(get_circle_service)
+) -> CircleMemberResponse:
+    """
+    Transfer a member from one circle to another.
+    
+    - **circle_id**: ID of the source circle
+    - **user_id**: ID of the user to transfer
+    - **target_circle_id**: ID of the target circle
+    - **reason**: Optional reason for the transfer
+    
+    Only facilitators can transfer members. The facilitator must have access to both circles.
+    
+    Validates:
+    - Target circle capacity constraints
+    - User is not already in target circle
+    - User is active member of source circle
+    
+    The payment status is preserved during transfer.
+    
+    Returns the new membership in the target circle.
+    """
+    try:
+        new_membership = await circle_service.transfer_member_between_circles(
+            circle_id,
+            transfer_data.target_circle_id,
+            user_id,
+            current_user.id,
+            transfer_data.reason
+        )
+        
+        # Convert to response format
+        return CircleMemberResponse(
+            user_id=new_membership.user_id,
+            circle_id=new_membership.circle_id,
+            is_active=new_membership.is_active,
+            payment_status=new_membership.payment_status,
+            joined_at=new_membership.joined_at
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to transfer member between circles"
+        )
+
+
+@router.patch(
+    "/{circle_id}/members/{user_id}/payment",
+    response_model=CircleMemberResponse,
+    summary="Update member payment status",
+    description="Update a member's payment status (facilitator only)"
+)
+async def update_member_payment_status(
+    circle_id: int,
+    user_id: int,
+    payment_data: CircleMemberPaymentUpdate,
+    current_user: User = Depends(get_current_user),
+    circle_service: CircleService = Depends(get_circle_service)
+) -> CircleMemberResponse:
+    """
+    Update a member's payment status.
+    
+    - **circle_id**: ID of the circle
+    - **user_id**: ID of the member
+    - **payment_status**: New payment status (pending, current, overdue, paused)
+    
+    Only the circle facilitator can update payment status.
+    
+    Valid payment statuses:
+    - pending: Payment not yet processed
+    - current: Payment up to date
+    - overdue: Payment is late
+    - paused: Membership temporarily paused
+    
+    Returns the updated membership information.
+    """
+    try:
+        membership = await circle_service.update_member_payment_status(
+            circle_id,
+            user_id,
+            payment_data.payment_status,
+            current_user.id
+        )
+        
+        if not membership:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Member not found in circle"
+            )
+        
+        # Convert to response format
+        return CircleMemberResponse(
+            user_id=membership.user_id,
+            circle_id=membership.circle_id,
+            is_active=membership.is_active,
+            payment_status=membership.payment_status,
+            joined_at=membership.joined_at
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update member payment status"
         ) 
