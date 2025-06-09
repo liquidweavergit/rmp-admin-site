@@ -9,7 +9,9 @@ from .role import Role, Permission, UserRole, RoleAuditLog
 from .circle import Circle, CircleStatus
 from .circle_membership import CircleMembership, PaymentStatus
 from .meeting import Meeting, MeetingAttendance, MeetingStatus, AttendanceStatus
+from .transfer_request import TransferRequest, TransferRequestStatus
 
 __all__ = ["User", "UserCredentials", "Role", "Permission", "UserRole", "RoleAuditLog", 
            "Circle", "CircleStatus", "CircleMembership", "PaymentStatus",
-           "Meeting", "MeetingAttendance", "MeetingStatus", "AttendanceStatus"] 
+           "Meeting", "MeetingAttendance", "MeetingStatus", "AttendanceStatus",
+           "TransferRequest", "TransferRequestStatus"] 

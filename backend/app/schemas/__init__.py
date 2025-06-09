@@ -14,6 +14,14 @@ from .circle import (
     CircleMemberPaymentUpdate,
     CircleMemberListResponse
 )
+from .transfer_request import (
+    TransferRequestCreate,
+    TransferRequestResponse,
+    TransferRequestListResponse,
+    TransferRequestReview,
+    TransferRequestStats,
+    TransferRequestDetailResponse
+)
 # from .user import UserCreate, UserResponse, UserUpdate
 # from .auth import Token, TokenData, LoginRequest, RegisterRequest
 
@@ -29,6 +37,14 @@ __all__ = [
     "CircleMemberTransfer",
     "CircleMemberPaymentUpdate",
     "CircleMemberListResponse",
+    
+    # Transfer request schemas
+    "TransferRequestCreate",
+    "TransferRequestResponse",
+    "TransferRequestListResponse",
+    "TransferRequestReview",
+    "TransferRequestStats",
+    "TransferRequestDetailResponse",
     
     # User schemas (temporarily commented out)
     # "UserCreate",
