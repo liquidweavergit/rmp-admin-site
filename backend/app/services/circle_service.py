@@ -4,7 +4,7 @@ Circle service for managing circle business logic and database operations
 from typing import List, Optional, Dict, Any
 from typing import Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, func, desc
+from sqlalchemy import select, and_, or_, func, desc, asc
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status, Depends
 
@@ -160,13 +160,25 @@ class CircleService:
                     )
                 )
             
+            if search_params.capacity_min:
+                base_query = base_query.where(Circle.capacity_min >= search_params.capacity_min)
+            
+            if search_params.capacity_max:
+                base_query = base_query.where(Circle.capacity_max <= search_params.capacity_max)
+            
             # Get total count
             count_query = select(func.count()).select_from(base_query.subquery())
             count_result = await self.db.execute(count_query)
             total = count_result.scalar()
             
-            # Apply pagination and ordering
-            query = base_query.order_by(desc(Circle.created_at))
+            # Apply sorting
+            sort_field = getattr(Circle, search_params.sort_by, Circle.created_at)
+            if search_params.sort_order.lower() == "asc":
+                query = base_query.order_by(asc(sort_field))
+            else:
+                query = base_query.order_by(desc(sort_field))
+            
+            # Apply pagination
             query = query.offset((search_params.page - 1) * search_params.per_page)
             query = query.limit(search_params.per_page)
             

@@ -260,6 +260,10 @@ class CircleSearchParams(BaseModel):
     status: Optional[CircleStatus] = Field(None, description="Filter by circle status")
     facilitator_id: Optional[int] = Field(None, description="Filter by facilitator ID")
     location: Optional[str] = Field(None, description="Filter by location")
+    capacity_min: Optional[int] = Field(None, ge=1, le=10, description="Filter by minimum capacity")
+    capacity_max: Optional[int] = Field(None, ge=1, le=10, description="Filter by maximum capacity")
+    sort_by: Optional[str] = Field("created_at", description="Sort field (created_at, name, updated_at)")
+    sort_order: Optional[str] = Field("desc", description="Sort order (asc, desc)")
     
     class Config:
         use_enum_values = True
@@ -269,7 +273,12 @@ class CircleSearchParams(BaseModel):
                 "per_page": 10,
                 "search": "growth",
                 "status": "active",
-                "facilitator_id": 123
+                "facilitator_id": 123,
+                "location": "downtown",
+                "capacity_min": 4,
+                "capacity_max": 8,
+                "sort_by": "created_at",
+                "sort_order": "desc"
             }
         }
 

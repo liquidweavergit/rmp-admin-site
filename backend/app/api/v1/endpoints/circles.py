@@ -95,6 +95,10 @@ async def list_circles(
     status: Optional[CircleStatus] = Query(None, description="Filter by circle status"),
     facilitator_id: Optional[int] = Query(None, description="Filter by facilitator ID"),
     location: Optional[str] = Query(None, description="Filter by location"),
+    capacity_min: Optional[int] = Query(None, ge=1, le=10, description="Filter by minimum capacity"),
+    capacity_max: Optional[int] = Query(None, ge=1, le=10, description="Filter by maximum capacity"),
+    sort_by: Optional[str] = Query("created_at", description="Sort field (created_at, name, updated_at)"),
+    sort_order: Optional[str] = Query("desc", description="Sort order (asc, desc)"),
     current_user: User = Depends(get_current_user),
     circle_service: CircleService = Depends(get_circle_service)
 ) -> List[CircleResponse]:
@@ -121,7 +125,11 @@ async def list_circles(
             search=search,
             status=status,
             facilitator_id=facilitator_id,
-            location=location
+            location=location,
+            capacity_min=capacity_min,
+            capacity_max=capacity_max,
+            sort_by=sort_by,
+            sort_order=sort_order
         )
         
         circles, total = await circle_service.list_circles_for_user(
