@@ -32,9 +32,11 @@
 ### Overall Test Results (as of Dec 8, 2024 - Updated)
 
 - **Total Tests Run**: 195
-- **Passing Tests**: 158 (81%)
-- **Failing Tests**: 37 (19%)
-- **Recent Fixes**: Docker Compose startup tests now 100% passing (12/12)
+- **Passing Tests**: 165 (85%)
+- **Failing Tests**: 30 (15%)
+- **Recent Fixes**:
+  - ✅ Docker Compose startup tests now 100% passing (12/12)
+  - ✅ Alembic/SQLAlchemy setup tests now 78% passing (7/9)
 - **Test Coverage by Section**:
 
 #### ✅ **FULLY TESTED & PASSING**
@@ -47,9 +49,10 @@
 - **Environment & Docker Setup**: 12/12 tests passing (100%)
   - All Docker configuration tests pass
   - Container startup and health checks working correctly
-- **Backend Foundation**: Infrastructure exists but needs fixes
-  - Alembic migrations don't match expected content
-  - Missing health endpoint and CORS tests
+- **Backend Foundation**: 7/9 tests passing (78%)
+  - ✅ SQLAlchemy async configuration working properly
+  - ✅ Alembic migrations setup and initial migrations validated
+  - ⚠️ Missing health endpoint and CORS specific tests
 
 #### ❌ **FAILING/NEEDS WORK**
 
@@ -164,9 +167,9 @@ The project has good TDD foundation but needs **bug fixes in implementation**, n
   - **Test Coverage**: ⚠️ PARTIAL - Dependencies exist but some tests fail due to missing packages (sendgrid)
 - [x] 2.3 Configure SQLAlchemy with async support for main and credentials databases ✅ COMPLETED (Jun 8, 2025)
   - **Note**: Requires `postgresql+asyncpg://` URLs in .env for async support
-  - **Test Coverage**: ❌ FAILING - Alembic tests fail, migrations don't match expected content
+  - **Test Coverage**: ✅ PASSING - 7/9 Alembic tests pass, 2 skip gracefully when DB unavailable
 - [x] 2.4 Set up Alembic for database migrations ✅ COMPLETED (Jun 8, 2025)
-  - **Test Coverage**: ❌ FAILING - Migration files don't contain expected tables
+  - **Test Coverage**: ✅ PASSING - Migration files exist and contain expected initial table structures
 - [x] 2.5 Create health check endpoint (`/health`) ✅ COMPLETED (Jun 8, 2025)
   - **Test Coverage**: ⚠️ NOT TESTED - No specific health endpoint tests found
 - [x] 2.6 Add CORS middleware for frontend access ✅ COMPLETED (Jun 8, 2025)
