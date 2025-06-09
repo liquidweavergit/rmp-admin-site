@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import FacilitatorPanel from "./pages/FacilitatorPanel";
 import { PhoneVerification } from "./pages/PhoneVerification";
+import { GoogleOAuthCallback } from "./pages/GoogleOAuthCallback";
 import "./App.css";
 
 function App() {
@@ -26,6 +27,9 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+
+              {/* Google OAuth callback route - public route for OAuth flow */}
+              <Route path="/auth/google/callback" element={<GoogleOAuthCallback />} />
 
               {/* Phone verification route - requires authentication but not full verification */}
               <Route

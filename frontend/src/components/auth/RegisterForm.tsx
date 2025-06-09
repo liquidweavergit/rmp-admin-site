@@ -16,6 +16,7 @@ import {
 import { Visibility, VisibilityOff, Email, Lock, Person, Phone } from "@mui/icons-material";
 import { useRegisterMutation } from "../../store";
 import { validateRegisterForm, RegisterFormData } from "../../utils/validation";
+import { GoogleOAuthButton } from "./GoogleOAuthButton";
 
 interface RegisterFormProps {
   onSuccess?: () => void;
@@ -321,8 +322,19 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             )}
           </Button>
 
+          {/* Google OAuth Registration */}
+          <GoogleOAuthButton
+            fullWidth
+            size="large"
+            showDivider
+            dividerText="or sign up with"
+            mode="popup"
+            onSuccess={onSuccess}
+            onError={(error) => setGeneralError(error)}
+          />
+
           {onSwitchToLogin && (
-            <Box textAlign="center">
+            <Box textAlign="center" sx={{ mt: 2 }}>
               <Typography variant="body2">
                 Already have an account?{" "}
                 <Link

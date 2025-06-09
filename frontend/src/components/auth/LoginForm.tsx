@@ -17,6 +17,7 @@ import { useDispatch } from "react-redux";
 import { useLoginMutation } from "../../store";
 import { setCredentials } from "../../store";
 import { validateLoginForm, LoginFormData } from "../../utils/validation";
+import { GoogleOAuthButton } from "./GoogleOAuthButton";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -204,8 +205,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             )}
           </Button>
 
+          {/* Google OAuth Login */}
+          <GoogleOAuthButton
+            fullWidth
+            size="large"
+            showDivider
+            dividerText="or continue with"
+            mode="popup"
+            onSuccess={onSuccess}
+            onError={(error) => setGeneralError(error)}
+          />
+
           {onSwitchToRegister && (
-            <Box textAlign="center">
+            <Box textAlign="center" sx={{ mt: 2 }}>
               <Typography variant="body2">
                 Don't have an account?{" "}
                 <Link

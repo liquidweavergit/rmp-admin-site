@@ -92,6 +92,34 @@ interface SMSVerificationResponse {
   phone_verified?: boolean;
 }
 
+// Google OAuth interfaces
+interface GoogleOAuthUrlRequest {
+  redirect_uri: string;
+}
+
+interface GoogleOAuthUrlResponse {
+  authorization_url: string;
+  state?: string;
+}
+
+interface GoogleOAuthCallbackRequest {
+  code: string;
+  state?: string;
+  redirect_uri: string;
+}
+
+interface GoogleOAuthLoginRequest {
+  id_token: string;
+  access_token?: string;
+}
+
+interface GoogleOAuthResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  user: UserResponse;
+}
+
 // Define the API base query
 const baseQuery = fetchBaseQuery({
   baseUrl: process.env.REACT_APP_API_URL || "http://localhost:8000",
@@ -177,6 +205,33 @@ export const api = createApi({
         url: "/api/v1/auth/verify-sms-code",
         method: "POST",
         body: verificationData,
+      }),
+      invalidatesTags: ["Auth"],
+    }),
+
+    // Google OAuth endpoints
+    getGoogleAuthUrl: builder.mutation<GoogleOAuthUrlResponse, GoogleOAuthUrlRequest>({
+      query: (oauthData) => ({
+        url: "/api/v1/auth/google/auth-url",
+        method: "POST",
+        body: oauthData,
+      }),
+    }),
+
+    googleOAuthCallback: builder.mutation<GoogleOAuthResponse, GoogleOAuthCallbackRequest>({
+      query: (callbackData) => ({
+        url: "/api/v1/auth/google/callback",
+        method: "POST",
+        body: callbackData,
+      }),
+      invalidatesTags: ["Auth"],
+    }),
+
+    googleOAuthLogin: builder.mutation<GoogleOAuthResponse, GoogleOAuthLoginRequest>({
+      query: (loginData) => ({
+        url: "/api/v1/auth/google/login",
+        method: "POST",
+        body: loginData,
       }),
       invalidatesTags: ["Auth"],
     }),
@@ -283,6 +338,9 @@ export const {
   useGetUserProfileQuery,
   useSendSMSVerificationMutation,
   useVerifySMSCodeMutation,
+  useGetGoogleAuthUrlMutation,
+  useGoogleOAuthCallbackMutation,
+  useGoogleOAuthLoginMutation,
 } = api;
 
 // Export types for use in other modules
@@ -299,4 +357,9 @@ export type {
   SendSMSVerificationRequest,
   VerifySMSCodeRequest,
   SMSVerificationResponse,
+  GoogleOAuthUrlRequest,
+  GoogleOAuthUrlResponse,
+  GoogleOAuthCallbackRequest,
+  GoogleOAuthLoginRequest,
+  GoogleOAuthResponse,
 };
